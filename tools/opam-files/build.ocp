@@ -20,42 +20,33 @@
 (**************************************************************************)
 
 
-begin
-  library "opam-builder-lib";
+if ocaml_version < "4.00" then {
 
-  files = [
-    "memoryBackup.ml";
-    "checkDate.ml"
-    "checkDigest.ml"
-
-    "checkSnapshot.ml";
-
-    "checkTypes.ml";
-    "checkIO.ml";
-    "checkHash.ml";
-    "checkHtml.ml";
-    "checkGraph.ml";
-    "checkUpdate.ml";
-    "checkLint.ml";
-    "checkCudf.ml";
-    "checkBuild.ml";
-    "checkImport.ml";
-  ];
-
-  requires = [
-    "ocplib-system";
-    "ocplib-copam";
-    string_compat;
-    "ocplib-json" ]
-end
+  (* With 3.12.1, no access to compiler-libs, except using
+     toplevellib, which is only available in bytecode. *)
+  begin library "toplevellib"
+      has_asm = false
+      generated = true
+      dirname = "%{OCAMLLIB}%"
+  end;
+  compiler_requires = [ "toplevellib" ];
+  compiler_comp = [ "-I" "+compiler-libs/typing" ];
+} else {
+  compiler_requires = [ "compiler-libs.common" ];
+  compiler_comp = [];
+}
 
 begin
-  program "opam-builder";
+  program "opam-files";
 
+  comp = compiler_comp;
   files = [ "main.ml" ];
+
+  pp = [ "ocp-pp" ]
 
   requires = [
     "opam-builder-lib"
+     compiler_requires
 
     "ocplib-system";
     "ocplib-copam";

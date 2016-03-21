@@ -88,10 +88,10 @@ let analyze dirs c =
 
   load_all_lint dirs c;
 
-  let errors = Array.create max_errors [] in
-  let error_messages = Array.create max_errors "" in
-  let warnings = Array.create max_errors [] in
-  let warning_messages = Array.create max_errors "" in
+  let errors = Array.make max_errors [] in
+  let error_messages = Array.make max_errors "" in
+  let warnings = Array.make max_errors [] in
+  let warning_messages = Array.make max_errors "" in
 
   StringMap.iter (fun _ p ->
   StringMap.iter (fun _ v ->
@@ -361,14 +361,14 @@ let autofix_packages dirs c =
   StringMap.iter (fun _ p ->
 
       (* 1/ find versions that have the required fields *)
-      let solvers = Array.create max_errors [] in
-      let missing = Array.create max_errors [] in
+      let solvers = Array.make max_errors [] in
+      let missing = Array.make max_errors [] in
       StringMap.iter (fun _ v ->
           match v.version_lint with
           | None ->
             Printf.eprintf "%s has no lint !\n%!" v.version_name
           | Some { lint_errors; lint_warnings } ->
-            let errors = Array.create max_errors false in
+            let errors = Array.make max_errors false in
             List.iter (fun (num, msg) ->
                 Printf.eprintf "%s has error %d\n%!" v.version_name num;
                 errors.(num) <- true;
