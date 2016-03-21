@@ -6,6 +6,11 @@ already compiled packages (binary packages), and is completely
 incremental, i.e. not recomputing anything that has not changed since
 the last commit.
 
+Currently, the results of running opam-builder on a 4-core server
+running Debian 8 are displayed here:
+
+http://opam.ocamlpro.com/builder/html/report-last.html
+
 # Build
 
 ## Dependencies
