@@ -1,0 +1,16 @@
+ROOTDIR=../..
+OBUILD=$(ROOTDIR)/_obuild
+include $(ROOTDIR)/autoconf/Makefile.config
+
+all:
+	ocp-build $(PROJECT)
+
+clean:
+	ocp-build clean
+
+install:
+	if [ -e  $(OBUILD)/$(PROJECT)/$(PROJECT).asm ]; then \
+		cp -f $(OBUILD)/$(PROJECT)/$(PROJECT).asm \
+			$(BINDIR)/$(PROJECT); \
+	fi
+

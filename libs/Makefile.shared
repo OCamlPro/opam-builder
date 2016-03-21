@@ -1,0 +1,20 @@
+ROOTDIR=../..
+OBUILD=$(ROOTDIR)/_obuild
+include $(ROOTDIR)/autoconf/Makefile.config
+
+all:
+	ocp-build $(PROJECT)
+
+clean:
+	ocp-build clean
+
+install:
+	if [ -e  $(OBUILD)/$(PROJECT)/$(PROJECT).a ]; then \
+           mkdir -p $(LIBDIR)/$(PROJECT); \
+           cp -f \
+            $(OBUILD)/$(PROJECT)/*.a \
+            $(OBUILD)/$(PROJECT)/*.cm? \
+            $(OBUILD)/$(PROJECT)/*.cm?? \
+			$(LIBDIR)/$(PROJECT)/; \
+	fi
+
