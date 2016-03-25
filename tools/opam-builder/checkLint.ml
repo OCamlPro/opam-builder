@@ -554,8 +554,8 @@ let export dirs c =
       (Printf.sprintf "%s-%s-lint.export"
          date
          c.commit_name) in
-
-  let oc = open_out export_file in
+  let export_file_tmp = export_file ^ ".tmp" in
+  let oc = open_out export_file_tmp in
 
   Printf.fprintf oc "commit:%s\n" c.commit_name;
   Printf.fprintf oc "switch:lint\n";
@@ -578,3 +578,4 @@ let export dirs c =
   Printf.fprintf oc "export:end\n";
 
   close_out oc;
+  Sys.rename export_file_tmp export_file

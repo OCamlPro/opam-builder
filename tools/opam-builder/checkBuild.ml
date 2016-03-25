@@ -358,7 +358,8 @@ let export_switch st c sw =
          date
          c.commit_name sw.sw_name) in
 
-  let oc = open_out export_file in
+  let export_file_tmp = export_file ^ ".tmp" in
+  let oc = open_out export_file_tmp in
 
   Printf.fprintf oc "commit:%s\n" c.commit_name;
   Printf.fprintf oc "switch:%s\n" sw.sw_name;
@@ -432,7 +433,8 @@ let export_switch st c sw =
         ) p.package_versions;
     ) c.packages;
   Printf.fprintf oc "export:end\n";
-  close_out oc
+  close_out oc;
+  Sys.rename export_file_tmp export_file
 
 let report_switch st c sw =
   let dirs = st.dirs in

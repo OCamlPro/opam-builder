@@ -44,6 +44,12 @@ type status =
   | StatusSuccess of string list * string list
   | StatusLint of (int * string) list * (int * string) list
 
+(* For now, we raise this exception, as it is probably the case
+   that the file was read before it was fully generated. Ideally,
+   we should fix opam-builder to rename the file only once it is
+   fully generated. *)
+exception NotComplete
+
 let import_lint lint_file =
   let errors = ref [] in
   let warnings = ref [] in
@@ -103,7 +109,7 @@ let import_lint lint_file =
   match !commit_name, !check_date with
   | Some commit_name, Some check_date ->
     (commit_name, check_date, "Lint", packages, versions)
-  | _ -> assert false
+  | _ -> raise NotComplete
 
 
 let import_switch switch_file =
@@ -222,7 +228,8 @@ let import_switch switch_file =
   match !commit_name, !check_date, !switch_name with
   | Some commit_name, Some check_date, Some switch_name ->
     (commit_name, check_date, switch_name, packages, versions)
-  | _ -> assert false
+  | _ ->
+    raise NotComplete
 
 let html_dir = "html"
 
@@ -519,48 +526,56 @@ let import t =
       ref := filename :: !ref
     ) export_files;
 
+  let to_add = ref [] in
   let new_file = ref false in
   StringMap.iter (fun switch filenames ->
       match !filenames with
       | filename :: _ ->
         if not (StringSet.mem filename t.files) then begin
-          t.files <- StringSet.add filename t.files;
+          to_add := filename :: !to_add;
           new_file := true
         end
       | _ -> ()
     ) !switches;
 
   if !new_file then begin
-    let lint = ref None in
-    let files = ref [] in
-    StringMap.iter (fun switch filenames ->
-        match !filenames with
-        | [] -> assert false
-        | filename :: _ ->
+    try
+      let lint = ref None in
+      let files = ref [] in
+      StringMap.iter (fun switch filenames ->
+          match !filenames with
+          | [] -> assert false
+          | filename :: _ ->
 
-          Printf.eprintf "Loading %S\n%!" filename;
-          match switch with
-          | "lint" ->
-            lint := Some (import_lint filename)
-          | switch ->
-            files := (switch, import_switch filename) :: !files;
+            Printf.eprintf "Loading %S\n%!" filename;
+            match switch with
+            | "lint" ->
+              lint := Some (import_lint filename)
+            | switch ->
+              files := (switch, import_switch filename) :: !files;
 
-            begin
-              let switches = match !filenames with
-                  f1::f2::f3::f4::f5::f6:: _ -> [f1;f2;f3;f4;f5;f6]
-                | files -> files in
-              let switches = List.map (fun filename ->
-                  import_switch filename
-                ) switches in
-              print_report switches switch
-            end;
-      ) !switches;
+              begin
+                let switches = match !filenames with
+                    f1::f2::f3::f4::f5::f6:: _ -> [f1;f2;f3;f4;f5;f6]
+                  | files -> files in
+                let switches = List.map (fun filename ->
+                    import_switch filename
+                  ) switches in
+                print_report switches switch
+              end;
+        ) !switches;
 
-    let files = List.map snd (List.sort compare !files) in
-    let switches = match !lint with
-      | None -> files
-      | Some lint -> lint :: files in
+      let files = List.map snd (List.sort compare !files) in
+      let switches = match !lint with
+        | None -> files
+        | Some lint -> lint :: files in
 
-    print_report switches "last"
+      print_report switches "last";
 
+      List.iter (fun filename ->
+          t.files <- StringSet.add filename t.files
+        ) !to_add
+    with NotComplete ->
+      (* One of the files was not finished, we should restart in one minute.*)
+      ()
   end
