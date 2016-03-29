@@ -1,28 +1,21 @@
 {
 (**************************************************************************)
 (*                                                                        *)
-(*              OCamlPro-Inria-Irill Attribution AGPL                     *)
+(*    Copyright 2012-2015 OCamlPro                                        *)
+(*    Copyright 2012 INRIA                                                *)
 (*                                                                        *)
-(*   Copyright OCamlPro-Inria-Irill 2011-2016. All rights reserved.       *)
-(*   This file is distributed under the terms of the AGPL v3.0            *)
-(*   (GNU Affero General Public Licence version 3.0) with                 *)
-(*   a special OCamlPro-Inria-Irill attribution exception.                *)
+(*  All rights reserved.This file is distributed under the terms of the   *)
+(*  GNU Lesser General Public License version 3.0 with linking            *)
+(*  exception.                                                            *)
 (*                                                                        *)
-(*     Contact: <typerex@ocamlpro.com> (http://www.ocamlpro.com/)         *)
+(*  OPAM is distributed in the hope that it will be useful, but WITHOUT   *)
+(*  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY    *)
+(*  or FITNESS FOR A PARTICULAR PURPOSE.See the GNU General Public        *)
+(*  License for more details.                                             *)
 (*                                                                        *)
-(*  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,       *)
-(*  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES       *)
-(*  OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND              *)
-(*  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS   *)
-(*  BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN    *)
-(*  ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN     *)
-(*  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE      *)
-(*  SOFTWARE.                                                             *)
 (**************************************************************************)
 
-
-
-  open CopamTypes
+open CopamTypes
 open CopamParser
 
 

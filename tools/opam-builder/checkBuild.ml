@@ -358,7 +358,8 @@ let export_switch st c sw =
          date
          c.commit_name sw.sw_name) in
 
-  let oc = open_out export_file in
+  let export_file_tmp = export_file ^ ".tmp" in
+  let oc = open_out export_file_tmp in
 
   Printf.fprintf oc "commit:%s\n" c.commit_name;
   Printf.fprintf oc "switch:%s\n" sw.sw_name;
@@ -432,13 +433,14 @@ let export_switch st c sw =
         ) p.package_versions;
     ) c.packages;
   Printf.fprintf oc "export:end\n";
-  close_out oc
+  close_out oc;
+  Sys.rename export_file_tmp export_file
 
 let report_switch st c sw =
   let dirs = st.dirs in
   let report_file = Filename.concat dirs.report_dir
-    (Printf.sprintf "%s-build-%s.html"
-       c.commit_name sw.sw_name) in
+      (Printf.sprintf "%s-build-%s.html"
+         c.commit_name sw.sw_name) in
 
 
 
@@ -452,34 +454,34 @@ let report_switch st c sw =
   let nerror_versions = ref 0 in
 
   StringMap.iter (fun package_name p ->
-    incr npackages;
-    let package_dir = Filename.concat dirs.cache_dir p.package_name in
-    StringMap.iter (fun version_name v ->
-      incr nversions;
-      let version_dir = Filename.concat package_dir v.version_name in
-      let status = CheckCudf.solution_deps version_dir version_name sw.sw_name in
-      begin
-        match status with
-        | NotInstallable -> incr nbroken_versions
-        | NotAvailable -> incr nunavailable_versions
-        | ExternalError -> incr nerror_versions
-        | Installable deps ->
-          let install_prefix =
-            Filename.concat version_dir
-              (Printf.sprintf "%s-%s-install" v.version_name sw.sw_name) in
-          let _build_file = install_prefix ^ ".build" in
-          let _log_file = install_prefix ^ ".log" in
-          let result_file = install_prefix ^ ".result" in
-          try
-            match File.string_of_file result_file with
-            | "SUCCESS\n" -> incr nsuccess_versions
-            | "FAILURE\n" -> incr nfailed_versions
-            | _ -> raise Exit
-          with _ ->
-            incr nerror_versions
-      end;
-    ) p.package_versions;
-  ) c.packages;
+      incr npackages;
+      let package_dir = Filename.concat dirs.cache_dir p.package_name in
+      StringMap.iter (fun version_name v ->
+          incr nversions;
+          let version_dir = Filename.concat package_dir v.version_name in
+          let status = CheckCudf.solution_deps version_dir version_name sw.sw_name in
+          begin
+            match status with
+            | NotInstallable -> incr nbroken_versions
+            | NotAvailable -> incr nunavailable_versions
+            | ExternalError -> incr nerror_versions
+            | Installable deps ->
+              let install_prefix =
+                Filename.concat version_dir
+                  (Printf.sprintf "%s-%s-install" v.version_name sw.sw_name) in
+              let _build_file = install_prefix ^ ".build" in
+              let _log_file = install_prefix ^ ".log" in
+              let result_file = install_prefix ^ ".result" in
+              try
+                match File.string_of_file result_file with
+                | "SUCCESS\n" -> incr nsuccess_versions
+                | "FAILURE\n" -> incr nfailed_versions
+                | _ -> raise Exit
+              with _ ->
+                incr nerror_versions
+          end;
+        ) p.package_versions;
+    ) c.packages;
 
 
 
@@ -507,98 +509,98 @@ let report_switch st c sw =
   Printf.fprintf oc "</tr>\n";
 
   StringMap.iter (fun package_name p ->
-    let package_dir = Filename.concat dirs.cache_dir p.package_name in
+      let package_dir = Filename.concat dirs.cache_dir p.package_name in
 
-    Printf.fprintf oc "<tr>\n";
-    Printf.fprintf oc "  <td>%s</td>\n" package_name;
-    Printf.fprintf oc "  <td></td>\n";
-    Printf.fprintf oc "</tr>\n";
-
-    StringMap.iter (fun version_name v ->
       Printf.fprintf oc "<tr>\n";
-      Printf.fprintf oc "  <td><a href=\"http://github.com/ocaml/opam-repository/tree/master/packages/%s/%s/opam\">%s</a></td>\n"
-        package_name version_name version_name;
-
-      let version_dir = Filename.concat package_dir v.version_name in
-      let status = CheckCudf.solution_deps version_dir version_name sw.sw_name in
-      begin
-        match status with
-        | NotInstallable ->
-          Printf.fprintf oc "  <td style=\"background-color: red;\">BROKEN</td>\n"
-        | NotAvailable ->
-          Printf.fprintf oc "  <td style=\"background-color: white;\"></td>\n"
-        | ExternalError ->
-          Printf.fprintf oc "  <td style=\"background-color: yellow;\"></td>\n"
-        | Installable deps ->
-          let install_prefix =
-            Filename.concat version_dir
-              (Printf.sprintf "%s-%s-install" v.version_name sw.sw_name) in
-          let _build_file = install_prefix ^ ".build" in
-          let _log_file = install_prefix ^ ".log" in
-          let result_file = install_prefix ^ ".result" in
-          try
-            match File.string_of_file result_file with
-            | "SUCCESS\n" ->
-              Printf.fprintf oc "  <td style=\"background-color: green;\"></td>\n";
-            | "FAILURE\n" ->
-              Printf.fprintf oc "  <td style=\"background-color: orange;\"><a href=\"#%s\">FAILURE</a></td>\n" v.version_name;
-            | _ -> raise Exit
-          with _ ->
-            Printf.fprintf oc "  <td style=\"background-color: orange;\">???</td>\n";
-      end;
-
+      Printf.fprintf oc "  <td>%s</td>\n" package_name;
+      Printf.fprintf oc "  <td></td>\n";
       Printf.fprintf oc "</tr>\n";
 
-    ) p.package_versions;
-  ) c.packages;
+      StringMap.iter (fun version_name v ->
+          Printf.fprintf oc "<tr>\n";
+          Printf.fprintf oc "  <td><a href=\"http://github.com/ocaml/opam-repository/tree/master/packages/%s/%s/opam\">%s</a></td>\n"
+            package_name version_name version_name;
+
+          let version_dir = Filename.concat package_dir v.version_name in
+          let status = CheckCudf.solution_deps version_dir version_name sw.sw_name in
+          begin
+            match status with
+            | NotInstallable ->
+              Printf.fprintf oc "  <td style=\"background-color: red;\">BROKEN</td>\n"
+            | NotAvailable ->
+              Printf.fprintf oc "  <td style=\"background-color: white;\"></td>\n"
+            | ExternalError ->
+              Printf.fprintf oc "  <td style=\"background-color: yellow;\"></td>\n"
+            | Installable deps ->
+              let install_prefix =
+                Filename.concat version_dir
+                  (Printf.sprintf "%s-%s-install" v.version_name sw.sw_name) in
+              let _build_file = install_prefix ^ ".build" in
+              let _log_file = install_prefix ^ ".log" in
+              let result_file = install_prefix ^ ".result" in
+              try
+                match File.string_of_file result_file with
+                | "SUCCESS\n" ->
+                  Printf.fprintf oc "  <td style=\"background-color: green;\"></td>\n";
+                | "FAILURE\n" ->
+                  Printf.fprintf oc "  <td style=\"background-color: orange;\"><a href=\"#%s\">FAILURE</a></td>\n" v.version_name;
+                | _ -> raise Exit
+              with _ ->
+                Printf.fprintf oc "  <td style=\"background-color: orange;\">???</td>\n";
+          end;
+
+          Printf.fprintf oc "</tr>\n";
+
+        ) p.package_versions;
+    ) c.packages;
 
   Printf.fprintf oc "</table>\n";
 
   let version_header p v =
     Printf.fprintf oc "<a name=\"%s\">\n" v.version_name;
     Printf.fprintf oc "<h2><a href=\"http://github.com/ocaml/opam-repository/tree/master/packages/%s/%s/opam\">%s</a></h2>\n"
-    p.package_name v.version_name v.version_name;
+      p.package_name v.version_name v.version_name;
     Printf.fprintf oc "</a>\n";
   in
 
   StringMap.iter (fun package_name p ->
-    let package_dir = Filename.concat dirs.cache_dir p.package_name in
+      let package_dir = Filename.concat dirs.cache_dir p.package_name in
 
-    StringMap.iter (fun version_name v ->
+      StringMap.iter (fun version_name v ->
 
-      let version_dir = Filename.concat package_dir v.version_name in
-      let status = CheckCudf.solution_deps version_dir version_name sw.sw_name in
-      begin
-        match status with
-        | NotAvailable -> ()
-        | ExternalError -> ()
-        | NotInstallable ->
-          version_header p v
-        | Installable deps ->
-          let install_prefix =
-            Filename.concat version_dir
-              (Printf.sprintf "%s-%s-install" v.version_name sw.sw_name) in
-          let build_file = install_prefix ^ ".build" in
-          let log_file = install_prefix ^ ".log" in
-          let result_file = install_prefix ^ ".result" in
-          try
-            match File.string_of_file result_file with
-            | "SUCCESS\n" -> ()
-            | "FAILURE\n" ->
-              version_header p v;
-              Printf.fprintf oc "<pre>%s</pre>"
-                (File.string_of_file build_file);
-              Printf.fprintf oc "<pre>%s</pre>"
-                (File.string_of_file log_file);
-            | _ -> raise Exit
-          with _ ->
-            ()
-      end;
+          let version_dir = Filename.concat package_dir v.version_name in
+          let status = CheckCudf.solution_deps version_dir version_name sw.sw_name in
+          begin
+            match status with
+            | NotAvailable -> ()
+            | ExternalError -> ()
+            | NotInstallable ->
+              version_header p v
+            | Installable deps ->
+              let install_prefix =
+                Filename.concat version_dir
+                  (Printf.sprintf "%s-%s-install" v.version_name sw.sw_name) in
+              let build_file = install_prefix ^ ".build" in
+              let log_file = install_prefix ^ ".log" in
+              let result_file = install_prefix ^ ".result" in
+              try
+                match File.string_of_file result_file with
+                | "SUCCESS\n" -> ()
+                | "FAILURE\n" ->
+                  version_header p v;
+                  Printf.fprintf oc "<pre>%s</pre>"
+                    (File.string_of_file build_file);
+                  Printf.fprintf oc "<pre>%s</pre>"
+                    (File.string_of_file log_file);
+                | _ -> raise Exit
+              with _ ->
+                ()
+          end;
 
-      Printf.fprintf oc "</tr>\n";
+          Printf.fprintf oc "</tr>\n";
 
-    ) p.package_versions;
-  ) c.packages;
+        ) p.package_versions;
+    ) c.packages;
 
 
 

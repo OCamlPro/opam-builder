@@ -1,0 +1,12 @@
+2016-03-29:
+* Remove lint warnings 37 and 42 from the generated html page
+
+2016-03-25:
+* Fix a race condition between the builder and the importer
+
+2016-03-21:
+* New tool 'opam-files' to create a file-system database of the values
+  stored in the installed .cmi files
+
+2016-03-21:
+* Initial release
