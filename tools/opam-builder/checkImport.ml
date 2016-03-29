@@ -26,6 +26,14 @@ open CheckTypes
 open StringCompat
 open CopamInstall
 
+module IntSet = Set.Make(struct type t = int let compare = compare end)
+
+let filtered_errors = List.fold_left (fun set error ->
+  IntSet.add error set) IntSet.empty [
+  37; (* Missing field 'dev-repo' *)
+  42; (* The 'dev-repo' field doesn't use version control. You may use URLs of the form "git+https://" or a ".hg" or ".git" suffix *)
+]
+
 (* Import the .export files from a list of directories. *)
 
 type state = {
@@ -82,10 +90,14 @@ let import_lint lint_file =
         package_versions := line :: !package_versions
       | "warning" ->
         let num, msg = OcpString.cut_at line ':' in
-        warnings := (int_of_string num, msg) :: !warnings
+        let error = int_of_string num in
+        if not (IntSet.mem error filtered_errors) then
+          warnings := (error, msg) :: !warnings
       | "error" ->
         let num, msg = OcpString.cut_at line ':' in
-        errors := (int_of_string num, msg) :: !errors
+        let error = int_of_string num in
+        if not (IntSet.mem error filtered_errors) then
+          errors := (error, msg) :: !errors
       | "lint" ->
         begin
           assert (line = "end");
