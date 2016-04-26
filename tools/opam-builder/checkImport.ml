@@ -142,34 +142,38 @@ let import_switch switch_file =
     | None -> ()
     | Some version_name ->
       begin
-      match !status with
-      | None -> assert false
-      | Some status ->
-        let status = match status with
-          | "non-installable" -> StatusNonInstallable
-          | "non-available" -> StatusNonAvailable
-          | "builder-error" -> StatusBuilderError
-          | "failure" ->
-            begin
-              match !deps, !log_file, !build_file with
-              | Some deps, Some log_file, Some build_file ->
-                StatusFailure (deps, log_file, build_file)
+        match !status with
+        | None -> assert false
+        | Some status ->
+          try
+            let status = match status with
+              | "non-installable" -> StatusNonInstallable
+              | "non-available" -> StatusNonAvailable
+              | "builder-error" -> StatusBuilderError
+              | "failure" ->
+                begin
+                  match !deps, !log_file, !build_file with
+                  | Some deps, Some log_file, Some build_file ->
+                    StatusFailure (deps, log_file, build_file)
 
               (* workaround a bug in opam-builder... *)
-              | Some deps, None, Some build_file ->
-                StatusSuccess (deps, build_file)
+                  | Some deps, None, Some build_file ->
+                    StatusSuccess (deps, build_file)
+                  | _ -> assert false
+                end
+              | "success" ->
+                begin
+                  match !deps, !build_file with
+                  | Some deps, None -> StatusSuccess (deps, [])
+                  | Some deps, Some build_file -> StatusSuccess (deps, build_file)
+                  | _ -> assert false
+                end
               | _ -> assert false
-            end
-          | "success" ->
-            begin
-              match !deps, !build_file with
-              | Some deps, None -> StatusSuccess (deps, [])
-              | Some deps, Some build_file -> StatusSuccess (deps, build_file)
-              | _ -> assert false
-            end
-          | _ -> assert false
-        in
-        Hashtbl.add versions version_name (status, ref None)
+            in
+            Hashtbl.add versions version_name (status, ref None)
+          with exn ->
+            Printf.eprintf "Error with status = %S\n%!" status;
+            raise exn
       end;
       version := None;
       status := None;
@@ -189,18 +193,18 @@ let import_switch switch_file =
   let in_file = ref false in
   let file_lines = ref [] in
   File.iter_lines (fun line ->
-      if !in_file then begin
-        match line with
-        | "begin-build:false" | "builder:end-build" ->
-          in_file := false;
-          build_file := Some (List.rev !file_lines);
-          file_lines := []
-        | "begin-log:false" | "builder:end-log" ->
-          in_file := false;
-          log_file := Some (List.rev !file_lines);
-          file_lines := []
-        | _ -> file_lines := line :: !file_lines;
-      end else
+    if !in_file then begin
+      match line with
+      | "begin-build:false" | "builder:end-build" ->
+        in_file := false;
+        build_file := Some (List.rev !file_lines);
+        file_lines := []
+      | "begin-log:false" | "builder:end-log" ->
+        in_file := false;
+        log_file := Some (List.rev !file_lines);
+        file_lines := []
+      | _ -> file_lines := line :: !file_lines;
+    end else
       let header, line = OcpString.cut_at line ':' in
       match header with
       | "commit" -> commit_name := Some line
@@ -235,7 +239,7 @@ let import_switch switch_file =
       | "export" -> assert (line = "end")
       | _ ->
         Printf.eprintf "%s: unknown line %S:%S\n%!" switch_file header line;
-    ) switch_file;
+  ) switch_file;
   commit_package ();
   match !commit_name, !check_date, !switch_name with
   | Some commit_name, Some check_date, Some switch_name ->
