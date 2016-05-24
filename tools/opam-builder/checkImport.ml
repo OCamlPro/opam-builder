@@ -387,7 +387,25 @@ let print_report switches name =
   CheckHtml.begin_html oc (Printf.sprintf "Report: %s" name);
   Printf.fprintf oc "<h1>opam-repository Status on Debian 8</h1>\n";
 
-  Printf.fprintf oc "<table>\n";
+  Printf.fprintf oc "
+  <style type=\"text/css\" media=\"screen\">
+     .floatTable td, .floatHolder td {
+        padding: 5px;
+      }
+     .floatTr {
+        background-color: #bbb;
+      }
+      .floatHolder {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100;
+        display: none;
+       }
+</style>
+";
+
+  Printf.fprintf oc "<table class=\"floatTable\">\n";
 
   Printf.fprintf oc "<tr>\n";
   Printf.fprintf oc "  <td><a href=\"report-last.html\">Package</a></td>\n";
@@ -403,7 +421,7 @@ let print_report switches name =
   Printf.fprintf oc "</tr>\n";
 
 
-  Printf.fprintf oc "<tr>\n";
+  Printf.fprintf oc "<tr class=\"floatTr\">\n";
   Printf.fprintf oc "  <td>Commit: </td>\n";
   List.iter (fun (commit, date, switch, _, _) ->
       Printf.fprintf oc "  <td><a href=\"https://github.com/ocaml/opam-repository/commit/%s\">%s</a></td>\n" commit commit;
@@ -507,6 +525,42 @@ let print_report switches name =
     ) !packages;
 
   Printf.fprintf oc "</table>\n";
+  Printf.fprintf oc "<table class=\"floatHolder\" width=\"100%%\"></table>\n";
+
+  Printf.eprintf
+"<script>
+var fhHeight = 0;
+var ft = $('.floatTable');
+var fhold = $('.floatHolder');
+var win = $(window);
+
+$(window).scroll(function() {
+
+var ftr = $('.floatTr');
+
+if(fhHeight==0 && (ft.offset().top - win.scrollTop()) <= 0 &&
+       !ftr.parent().hasClass('floatHolder')) {
+    fhHeight = ftr.height();
+    ftr.appendTo(fhold);
+    fhold.show();
+}
+else if(fhHeight!=0 && fhHeight!=-1 &&
+        (ft.offset().top - win.scrollTop() > fhHeight ||
+         ft.offset().top + ft.outerHeight(true) - win.scrollTop() < 0))  {
+    if(ft.offset().top + ft.outerHeight(true) - win.scrollTop() < 0) {
+        fhHeight = -1;
+    }
+    else {
+        fhHeight = 0;
+    }
+    ftr.prependTo(ft);
+    fhold.hide();
+}
+else if(fhHeight==-1 && ft.offset().top + ft.outerHeight(true) - win.scrollTop() > 0) {
+    fhHeight = 0;
+}
+});
+ </script>";
   CheckHtml.end_html oc;
   close_out oc;
   Printf.eprintf "Generated\n%!";
