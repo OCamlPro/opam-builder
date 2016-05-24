@@ -249,7 +249,7 @@ let import_switch switch_file =
 
 let html_dir = "html"
 
-let print_report switches name =
+let print_report ~diff switches name =
 
   if not (Sys.file_exists html_dir) then
     Unix.mkdir html_dir 0o755;
@@ -411,6 +411,10 @@ let print_report switches name =
 ";
 
 
+  if diff then begin
+    Printf.fprintf oc "<h2>Diff Mode: only status changes are displayed</h2>\n";
+  end;
+
   Printf.fprintf oc "<table class=\"floatHolder\">\n";
   Printf.fprintf oc "<tr class=\"floatTr2\">\n";
   Printf.fprintf oc "  <td><a href=\"report-last.html\">Package</a></td>\n";
@@ -460,94 +464,144 @@ let print_report switches name =
 
   StringMap.iter (fun package_name package_versions ->
 
-      Printf.fprintf oc "<tr>\n";
-      Printf.fprintf oc "  <td><a name=\"%s\">%s</a></td>\n"
-        package_name package_name;
-      Printf.fprintf oc "  <td></td>\n";
-      Printf.fprintf oc "</tr>\n";
-
+      let display_package =
+        let display = ref false in
+        function () ->
+          if not !display then begin
+            display := true;
+            Printf.fprintf oc "<tr>\n";
+            Printf.fprintf oc "  <td><a name=\"%s\">%s</a></td>\n"
+              package_name package_name;
+            Printf.fprintf oc "  <td></td>\n";
+            Printf.fprintf oc "</tr>\n";
+          end
+      in
       StringSet.iter (fun version_name ->
-          Printf.fprintf oc "<tr>\n";
-          Printf.fprintf oc "  <td><a name=\"%s\"> </a><a href=\"http://github.com/ocaml/opam-repository/tree/master/packages/%s/%s/opam\">%s</a></td>\n"
-            version_name package_name version_name  version_name;
 
+          let display_version =
+            let display = ref false in
+            function () ->
+              if not !display then begin
+                display_package ();
+                Printf.fprintf oc "<tr>\n";
+                Printf.fprintf oc "  <td><a name=\"%s\"> </a><a href=\"http://github.com/ocaml/opam-repository/tree/master/packages/%s/%s/opam\">%s</a></td>\n"
+                  version_name package_name version_name  version_name;
+              end
+          in
 
-          List.iter (fun (_,_,_,_,versions) ->
-              try
-                let status, ref = Hashtbl.find versions version_name in
-                let with_link msg =
-                  Printf.fprintf oc "  <a href=\"%s/%s/%s\">"
-                    package_name version_name
-                    (match !ref with
-                     | None -> assert false
-                     | Some digest ->
-                       CheckDigest.to_printable_string digest);
-                  msg oc;
-                  Printf.fprintf oc "  </a>\n";
-                in
-                match status with
-                | StatusLint (lint_errors, lint_warnings) ->
-                  begin
-                    match lint_errors with
-                    | _ :: _ ->
-                      Printf.fprintf oc "  <td style=\"background-color: red;\">";
-                      with_link (fun oc ->
-                          List.iter (fun (num, _) ->
-                              Printf.fprintf oc "%d " num;
-                            ) lint_errors;
-                          Printf.fprintf oc ": ";
-                          List.iter (fun (num, _) ->
-                              Printf.fprintf oc "%d " num;
-                            ) lint_warnings
-                        );
-                      Printf.fprintf oc "</td>\n"
-                    | [] ->
-                      match lint_warnings with
+          let should_display =
+            not diff ||
+            (let statuses = ref [] in
+             List.iter (fun (_,_,_,_,versions) ->
+                 let status =
+                   try
+                     let status, _ref = Hashtbl.find versions version_name in
+                     status
+                   with Not_found ->
+                     StatusNonAvailable
+                 in
+                 let status =
+                   match status with
+                   | StatusNonAvailable -> ""
+                   | StatusNonInstallable -> "BrokenDeps"
+                   | StatusBuilderError -> "BuilderFailed"
+                   | StatusFailure _ -> "Failed"
+                   | StatusSuccess _ -> "OK"
+                   | StatusLint _ -> "Lint"
+                 in
+                 match !statuses with
+                 | [] | [_] -> statuses := status :: !statuses
+                 | s :: _ ->
+                   if s <> status then
+                     statuses := status :: !statuses
+               ) switches;
+
+             match !statuses with
+             | [] | [_] -> true
+             | [s1;s2] -> s1 <> s2
+             | _ :: _ :: _ :: _ -> true
+            )
+          in
+
+          if should_display then begin
+            display_version ();
+            List.iter (fun (_,_,_,_,versions) ->
+
+                try
+                  let status, ref = Hashtbl.find versions version_name in
+                  let with_link msg =
+                    Printf.fprintf oc "  <a href=\"%s/%s/%s\">"
+                      package_name version_name
+                      (match !ref with
+                       | None -> assert false
+                       | Some digest ->
+                         CheckDigest.to_printable_string digest);
+                    msg oc;
+                    Printf.fprintf oc "  </a>\n";
+                  in
+                  match status with
+                  | StatusLint (lint_errors, lint_warnings) ->
+                    begin
+                      match lint_errors with
                       | _ :: _ ->
-                        Printf.fprintf oc "  <td style=\"background-color: orange;\">";
+                        Printf.fprintf oc "  <td style=\"background-color: red;\">";
                         with_link (fun oc ->
                             List.iter (fun (num, _) ->
                                 Printf.fprintf oc "%d " num;
-                              ) lint_warnings;
-                            Printf.fprintf oc "</td>\n")
-                      | [] ->
-                        Printf.fprintf oc "  <td style=\"background-color: green;\">";
+                              ) lint_errors;
+                            Printf.fprintf oc ": ";
+                            List.iter (fun (num, _) ->
+                                Printf.fprintf oc "%d " num;
+                              ) lint_warnings
+                          );
                         Printf.fprintf oc "</td>\n"
-                  end
-                | StatusBuilderError ->
-                  Printf.fprintf oc "<td>\n";
-                  with_link (fun oc ->
-                      Printf.fprintf oc "Builder Error");
-                  Printf.fprintf oc "</td>\n";
-                | StatusNonInstallable ->
-                  Printf.fprintf oc "<td style=\"background-color: red;\">\n";
-                  Printf.fprintf oc "<a href=\"http://ows.irill.org/latest/today/packages/%s-page.html#%s\">" package_name version_name;
-                  Printf.fprintf oc "Broken Deps";
-                  Printf.fprintf oc "</a>";
-                  Printf.fprintf oc "</td>\n"
-                | StatusNonAvailable ->
-                  Printf.fprintf oc "  <td>\n";
-                  Printf.fprintf oc "</td>\n"
-                | StatusSuccess (deps, build_content) ->
-                  Printf.fprintf oc "<td style=\"background-color: green;\">\n";
-                  with_link (fun oc -> Printf.fprintf oc "Ok");
-                  Printf.fprintf oc "</td>\n"
-                | StatusFailure (deps, build_content, log_content) ->
-                  Printf.fprintf oc "<td style=\"background-color: orange;\">\n";
-                  with_link (fun oc -> Printf.fprintf oc "Fail");
-                  Printf.fprintf oc "</td>\n"
-              with Not_found ->
-                Printf.fprintf oc "<td>Unknown</td>\n"
-            ) switches;
-          Printf.fprintf oc "</tr>\n";
-
+                      | [] ->
+                        match lint_warnings with
+                        | _ :: _ ->
+                          Printf.fprintf oc "  <td style=\"background-color: orange;\">";
+                          with_link (fun oc ->
+                              List.iter (fun (num, _) ->
+                                  Printf.fprintf oc "%d " num;
+                                ) lint_warnings;
+                              Printf.fprintf oc "</td>\n")
+                        | [] ->
+                          Printf.fprintf oc "  <td style=\"background-color: green;\">";
+                          Printf.fprintf oc "</td>\n"
+                    end
+                  | StatusBuilderError ->
+                    Printf.fprintf oc "<td>\n";
+                    with_link (fun oc ->
+                        Printf.fprintf oc "Builder Error");
+                    Printf.fprintf oc "</td>\n";
+                  | StatusNonInstallable ->
+                    Printf.fprintf oc "<td style=\"background-color: red;\">\n";
+                    Printf.fprintf oc "<a href=\"http://ows.irill.org/latest/today/packages/%s-page.html#%s\">" package_name version_name;
+                    Printf.fprintf oc "Broken Deps";
+                    Printf.fprintf oc "</a>";
+                    Printf.fprintf oc "</td>\n"
+                  | StatusNonAvailable ->
+                    Printf.fprintf oc "  <td>\n";
+                    Printf.fprintf oc "</td>\n"
+                  | StatusSuccess (deps, build_content) ->
+                    Printf.fprintf oc "<td style=\"background-color: green;\">\n";
+                    with_link (fun oc -> Printf.fprintf oc "Ok");
+                    Printf.fprintf oc "</td>\n"
+                  | StatusFailure (deps, build_content, log_content) ->
+                    Printf.fprintf oc "<td style=\"background-color: orange;\">\n";
+                    with_link (fun oc -> Printf.fprintf oc "Fail");
+                    Printf.fprintf oc "</td>\n"
+                with Not_found ->
+                  Printf.fprintf oc "<td>Unknown</td>\n"
+              ) switches;
+            Printf.fprintf oc "</tr>\n";
+          end
         ) !package_versions;
 
     ) !packages;
 
   Printf.fprintf oc "</table>\n";
   Printf.fprintf oc
-"
+    "
 <script>
 var fhHeight = 0;
 var ft = $('.floatTable');
@@ -670,7 +724,7 @@ let import t =
                 let switches = List.map (fun filename ->
                     import_switch filename
                   ) switches in
-                print_report switches switch
+                print_report ~diff:true switches switch
               end;
         ) !switches;
 
@@ -679,7 +733,7 @@ let import t =
         | None -> files
         | Some lint -> lint :: files in
 
-      print_report switches "last";
+      print_report ~diff:false switches "last";
 
       List.iter (fun filename ->
           t.files <- StringSet.add filename t.files
