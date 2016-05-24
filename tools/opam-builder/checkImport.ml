@@ -388,11 +388,16 @@ let print_report switches name =
   Printf.fprintf oc "<h1>opam-repository Status on Debian 8</h1>\n";
 
   Printf.fprintf oc "
-  <style type=\"text/css\" media=\"screen\">
+<script src=\"jquery-2.2.4.min.js\"></script>
+<style type=\"text/css\" media=\"screen\">
      .floatTable td, .floatHolder td {
-        padding: 5px;
+                 padding: 5px;
+                 width: 100%%;
       }
      .floatTr {
+        background-color: #bbb;
+      }
+     .floatTr2 {
         background-color: #bbb;
       }
       .floatHolder {
@@ -405,9 +410,25 @@ let print_report switches name =
 </style>
 ";
 
+
+  Printf.fprintf oc "<table class=\"floatHolder\">\n";
+  Printf.fprintf oc "<tr class=\"floatTr2\">\n";
+  Printf.fprintf oc "  <td><a href=\"report-last.html\">Package</a></td>\n";
+  List.iter (fun (commit, date, switch, _, _) ->
+
+      if Sys.file_exists (Printf.sprintf "%s/report-%s.html" html_dir switch)
+      then
+        Printf.fprintf oc "  <td><a href=\"report-%s.html\">%s</a></td>\n"
+          switch switch
+      else
+        Printf.fprintf oc "  <td>%s</td>\n" switch;
+    ) switches;
+  Printf.fprintf oc "</tr>\n";
+  Printf.fprintf oc "</table>\n";
+
   Printf.fprintf oc "<table class=\"floatTable\">\n";
 
-  Printf.fprintf oc "<tr>\n";
+  Printf.fprintf oc "<tr class=\"floatTr\">\n";
   Printf.fprintf oc "  <td><a href=\"report-last.html\">Package</a></td>\n";
   List.iter (fun (commit, date, switch, _, _) ->
 
@@ -525,23 +546,33 @@ let print_report switches name =
     ) !packages;
 
   Printf.fprintf oc "</table>\n";
-  Printf.fprintf oc "<table class=\"floatHolder\" width=\"100%%\"></table>\n";
-
-  Printf.eprintf
-"<script>
+  Printf.fprintf oc
+"
+<script>
 var fhHeight = 0;
 var ft = $('.floatTable');
 var fhold = $('.floatHolder');
 var win = $(window);
+var ftr = $('.floatTr');
+var ftrs = ftr.children();
 
 $(window).scroll(function() {
 
-var ftr = $('.floatTr');
+$(fhold).width(ft.width())
 
 if(fhHeight==0 && (ft.offset().top - win.scrollTop()) <= 0 &&
        !ftr.parent().hasClass('floatHolder')) {
     fhHeight = ftr.height();
-    ftr.appendTo(fhold);
+//    ftr.appendTo(fhold);
+
+var i;
+var fholds = fhold.children()[0].children[0].children;
+for(i=0;i<ftrs.length;i++){
+   var w = $(ftrs[i]).width();
+   $(fholds[i]).width(w);
+}
+
+
     fhold.show();
 }
 else if(fhHeight!=0 && fhHeight!=-1 &&
@@ -558,9 +589,17 @@ else if(fhHeight!=0 && fhHeight!=-1 &&
 }
 else if(fhHeight==-1 && ft.offset().top + ft.outerHeight(true) - win.scrollTop() > 0) {
     fhHeight = 0;
-}
+  }
+
+
+
+
+
+
 });
- </script>";
+ </script>
+";
+
   CheckHtml.end_html oc;
   close_out oc;
   Printf.eprintf "Generated\n%!";
