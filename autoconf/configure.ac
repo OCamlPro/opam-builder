@@ -17,6 +17,11 @@ AC_ARG_ENABLE(version-check,
  [VERSION_CHECK="$enableval"],
  [VERSION_CHECK="yes"])
 
+AC_ARG_ENABLE(bin-annot,
+ [  --disable-bin-annot            do not use -bin-annot],
+ [OCAML_USE_BINANNOT=false],
+ [OCAML_USE_BINANNOT=true])
+
 AC_PROG_CC
 
 AC_PROG_OCAML
@@ -36,6 +41,10 @@ if test "$VERSION_CHECK" = "yes" ; then
   AX_COMPARE_VERSION( [$OCAMLVERSION], [lt], [${OCAML_MINIMAL_VERSION}],
   AC_MSG_ERROR([Your version of OCaml: $OCAMLVERSION is not supported. You need ${OCAML_MINIMAL_VERSION} at least.]))
 fi
+
+AX_COMPARE_VERSION( [$OCAMLVERSION], [lt], [4.03.0],
+  [OCAML_USE_POSIX_TYPES=undef], [OCAML_USE_POSIX_TYPES=define])
+AC_SUBST(OCAML_USE_POSIX_TYPES)
 
 case "$OCAMLLIB" in
   */lib/ocaml)
@@ -126,7 +135,8 @@ AC_SUBST(OCAMLLIB)
 AC_SUBST(OCAMLBIN)
 AC_SUBST(PACKAGE_NAME)
 AC_SUBST(PACKAGE_VERSION)
-AC_CONFIG_FILES(Makefile.config config.ocpgen)
+AC_SUBST(OCAML_USE_BINANNOT)
+AC_CONFIG_FILES(Makefile.config config.ocpgen ocaml-config.h)
 AC_OUTPUT
 
 echo

@@ -586,6 +586,7 @@ PACKAGE_URL=''
 
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
+OCAML_USE_BINANNOT
 ROOTDIR
 OCAML_PKG_jsonm
 OCAML_TOOL_ocp_build
@@ -594,6 +595,7 @@ CONFIGURE_ARGS
 metadir
 ocamldir
 OCAMLFIND
+OCAML_USE_POSIX_TYPES
 AWK
 SED
 OCAMLBUILD
@@ -659,6 +661,7 @@ ac_subst_files=''
 ac_user_opts='
 enable_option_checking
 enable_version_check
+enable_bin_annot
 with_ocamldir
 with_metadir
 '
@@ -1280,6 +1283,7 @@ Optional Features:
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --disable-version-check            do not check OCaml version
+  --disable-bin-annot            do not use -bin-annot
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -1776,6 +1780,14 @@ if test "${enable_version_check+set}" = set; then :
   enableval=$enable_version_check; VERSION_CHECK="$enableval"
 else
   VERSION_CHECK="yes"
+fi
+
+
+# Check whether --enable-bin-annot was given.
+if test "${enable_bin_annot+set}" = set; then :
+  enableval=$enable_bin_annot; OCAML_USE_BINANNOT=false
+else
+  OCAML_USE_BINANNOT=true
 fi
 
 
@@ -3849,6 +3861,44 @@ x$ax_compare_version_B" | sed 's/^ *//' | sort -r | sed "s/x${ax_compare_version
 
 fi
 
+
+
+
+  # Used to indicate true or false condition
+  ax_compare_version=false
+
+  # Convert the two version strings to be compared into a format that
+  # allows a simple string comparison.  The end result is that a version
+  # string of the form 1.12.5-r617 will be converted to the form
+  # 0001001200050617.  In other words, each number is zero padded to four
+  # digits, and non digits are removed.
+
+  ax_compare_version_A=`echo "$OCAMLVERSION" | sed -e 's/\([0-9]*\)/Z\1Z/g' \
+                     -e 's/Z\([0-9]\)Z/Z0\1Z/g' \
+                     -e 's/Z\([0-9][0-9]\)Z/Z0\1Z/g' \
+                     -e 's/Z\([0-9][0-9][0-9]\)Z/Z0\1Z/g' \
+                     -e 's/[^0-9]//g'`
+
+
+  ax_compare_version_B=`echo "4.03.0" | sed -e 's/\([0-9]*\)/Z\1Z/g' \
+                     -e 's/Z\([0-9]\)Z/Z0\1Z/g' \
+                     -e 's/Z\([0-9][0-9]\)Z/Z0\1Z/g' \
+                     -e 's/Z\([0-9][0-9][0-9]\)Z/Z0\1Z/g' \
+                     -e 's/[^0-9]//g'`
+
+
+    ax_compare_version=`echo "x$ax_compare_version_A
+x$ax_compare_version_B" | sed 's/^ *//' | sort -r | sed "s/x${ax_compare_version_A}/false/;s/x${ax_compare_version_B}/true/;1q"`
+
+
+
+    if test "$ax_compare_version" = "true" ; then
+    OCAML_USE_POSIX_TYPES=undef
+    else OCAML_USE_POSIX_TYPES=define
+  fi
+
+
+
 case "$OCAMLLIB" in
   */lib/ocaml)
         OCAMLBIN=`dirname $OCAMLLIB`
@@ -4149,7 +4199,8 @@ fi
 
 
 
-ac_config_files="$ac_config_files Makefile.config config.ocpgen"
+
+ac_config_files="$ac_config_files Makefile.config config.ocpgen ocaml-config.h"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -4859,6 +4910,7 @@ do
   case $ac_config_target in
     "Makefile.config") CONFIG_FILES="$CONFIG_FILES Makefile.config" ;;
     "config.ocpgen") CONFIG_FILES="$CONFIG_FILES config.ocpgen" ;;
+    "ocaml-config.h") CONFIG_FILES="$CONFIG_FILES ocaml-config.h" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
   esac
