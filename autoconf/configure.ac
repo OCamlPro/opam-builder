@@ -8,6 +8,7 @@
 #                                                     #
 #######################################################
 AC_INIT(opam-builder,1.1)
+CONFIGURE_ARGS=$*
 AC_COPYRIGHT(Copyright 2016)
 OCAML_MINIMAL_VERSION=3.12.1
 AC_CONFIG_MACRO_DIR([m4])
@@ -113,6 +114,11 @@ AC_CHECK_OCAML_PKG(jsonm)
 if test "$OCAML_PKG_jsonm" = "no"; then
    AC_MSG_ERROR([Please install OCaml package 'jsonm'.])
 fi
+
+# This file will be inserted inside autoconf/configure.ac by ocp-autoconf
+# If you create variables, do not forget to add them in ocp-autoconf.config
+# in the 'extra_config_vars' and 'extra_bool_vars' options.
+
 AC_SUBST(CONFIGURE_ARGS)
 AC_SUBST(ROOTDIR)
 AC_SUBST(prefix)

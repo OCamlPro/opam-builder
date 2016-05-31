@@ -1771,6 +1771,7 @@ ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
+CONFIGURE_ARGS=$*
 
 OCAML_MINIMAL_VERSION=3.12.1
 
@@ -4177,6 +4178,11 @@ $as_echo "not found" >&6; }
 if test "$OCAML_PKG_jsonm" = "no"; then
    as_fn_error $? "Please install OCaml package 'jsonm'." "$LINENO" 5
 fi
+
+# This file will be inserted inside autoconf/configure.ac by ocp-autoconf
+# If you create variables, do not forget to add them in ocp-autoconf.config
+# in the 'extra_config_vars' and 'extra_bool_vars' options.
+
 
 
 
