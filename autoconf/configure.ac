@@ -174,7 +174,7 @@ AC_CONFIG_FILES(Makefile.config config.ocpgen ocaml-config.h)
 OPAM_REPO=/home/lefessan/WindowsSharedFolder/opam-repository-with-archives
 OPAM_REPO_OFFICIAL_REMOTE=ocaml
 OPAM_REPO_FORK_REMOTE=origin
-DOWNLOAD_URL_PREFIX=http://github.com//archive/
+DOWNLOAD_URL_PREFIX=http://github.com/OCamlPro/opam-builder/archive/
 AC_OUTPUT
 
 echo

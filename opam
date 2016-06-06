@@ -1,4 +1,11 @@
 opam-version: "1.2"
+maintainer: "Fabrice Le Fessant <fabrice.le_fessant@ocamlpro.com>"
+authors: [
+  "Fabrice Le Fessant <fabrice.le_fessant@ocamlpro.com>"
+]
+homepage: "http://opam.ocamlpro.com/builder"
+dev-repo: "https://github.com/OCamlPro/opam-builder.git"
+bug-reports: "https://github.com/OCamlPro/opam-builder/issues"
 build: [
   [     "./configure"
     "--prefix"
