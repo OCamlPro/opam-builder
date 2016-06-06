@@ -122,6 +122,8 @@ AC_CHECK_OCAML_PKG(ocp-build)
 if test "$OCAML_PKG_ocp_build" = "no"; then
    AC_MSG_ERROR([Please install OCaml package 'ocp-build'.])
 fi
+  AX_COMPARE_VERSION( [$OCAML_PKG_ocp_build_VERSION], [lt], [1.99.16-beta],
+     AC_MSG_ERROR([Version 1.99.16-beta of ocp-build is needed]))
 
 ###############################################################
 ##                                                            #
