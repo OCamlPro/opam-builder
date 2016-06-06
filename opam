@@ -1,0 +1,21 @@
+opam-version: "1.2"
+build: [
+  [     "./configure"
+    "--prefix"
+    "%{prefix}%"
+    "--with-ocamldir=%{prefix}%/lib"
+    "--with-metadir=%{prefix}%/lib"
+  ]
+  [ make ]
+]
+install: [
+  [ make "install" ]
+]
+remove: [
+]
+depends: [
+     "jsonm"
+     "ocamlfind"
+     "ocp-build"
+]
+available: [ocaml-version >= "3.12.1"]

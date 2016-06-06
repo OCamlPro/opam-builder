@@ -1,15 +1,23 @@
 
+#############################################################################
+#
+#          This file is managed by ocp-autoconf.
+#
+#  Remove it from `manage_files` in 'ocp-autoconf.config' if you want to
+#  modify it manually.
+#
+#############################################################################
+
 include autoconf/Makefile.config
 
 all: ocp-build-build
 
-install:
-	for tool in tools/*; do $(MAKE) -C $$tool install; done
+install: ocp-build-install
 
 clean: ocp-build-clean
-	find . -name '*~' -exec rm -f {} \;
 
 distclean: clean ocp-distclean
+	find . -name '*~' -exec rm -f {} \;
 
 include autoconf/Makefile.rules
 

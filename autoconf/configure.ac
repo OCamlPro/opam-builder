@@ -38,6 +38,10 @@ if test "$OCAMLC" = "no"; then
    AC_MSG_ERROR([You must install the OCaml compiler])
 fi
 
+if test "${OCAMLVERSION}" = ""; then
+   AC_MSG_ERROR([No OCaml version. ocamlc -version is not parsable.])
+fi
+
 if test "$VERSION_CHECK" = "yes" ; then
   AX_COMPARE_VERSION( [$OCAMLVERSION], [lt], [${OCAML_MINIMAL_VERSION}],
   AC_MSG_ERROR([Your version of OCaml: $OCAMLVERSION is not supported. You need ${OCAML_MINIMAL_VERSION} at least.]))
@@ -114,10 +118,28 @@ AC_CHECK_OCAML_PKG(jsonm)
 if test "$OCAML_PKG_jsonm" = "no"; then
    AC_MSG_ERROR([Please install OCaml package 'jsonm'.])
 fi
+AC_CHECK_OCAML_PKG(ocp-build)
+if test "$OCAML_PKG_ocp_build" = "no"; then
+   AC_MSG_ERROR([Please install OCaml package 'ocp-build'.])
+fi
+
+###############################################################
+##                                                            #
+## From autoconf.ac:                                          #
+##                                                            #
+###############################################################
+
 
 # This file will be inserted inside autoconf/configure.ac by ocp-autoconf
 # If you create variables, do not forget to add them in ocp-autoconf.config
 # in the 'extra_config_vars' and 'extra_bool_vars' options.
+
+
+###############################################################
+##                                                            #
+## END of autoconf.ac                                         #
+##                                                            #
+###############################################################
 
 AC_SUBST(CONFIGURE_ARGS)
 AC_SUBST(ROOTDIR)
@@ -130,6 +152,12 @@ AC_SUBST(mandir)
 AC_SUBST(datadir)
 AC_SUBST(ocamldir)
 AC_SUBST(metadir)
+AC_SUBST(PACKAGE_NAME)
+AC_SUBST(PACKAGE_VERSION)
+AC_SUBST(OPAM_REPO)
+AC_SUBST(OPAM_REPO_OFFICIAL_REMOTE)
+AC_SUBST(OPAM_REPO_FORK_REMOTE)
+AC_SUBST(DOWNLOAD_URL_PREFIX)
 AC_SUBST(OCAMLVERSION)
 AC_SUBST(OCAMLC)
 AC_SUBST(OCAMLOPT)
@@ -139,10 +167,12 @@ AC_SUBST(OCAMLMKLIB)
 AC_SUBST(OCAMLDOC)
 AC_SUBST(OCAMLLIB)
 AC_SUBST(OCAMLBIN)
-AC_SUBST(PACKAGE_NAME)
-AC_SUBST(PACKAGE_VERSION)
 AC_SUBST(OCAML_USE_BINANNOT)
 AC_CONFIG_FILES(Makefile.config config.ocpgen ocaml-config.h)
+OPAM_REPO=/home/lefessan/WindowsSharedFolder/opam-repository-with-archives
+OPAM_REPO_OFFICIAL_REMOTE=ocaml
+OPAM_REPO_FORK_REMOTE=origin
+DOWNLOAD_URL_PREFIX=http://github.com//archive/
 AC_OUTPUT
 
 echo
