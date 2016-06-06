@@ -124,6 +124,10 @@ if test "$OCAML_PKG_ocp_build" = "no"; then
 fi
   AX_COMPARE_VERSION( [$OCAML_PKG_ocp_build_VERSION], [lt], [1.99.16-beta],
      AC_MSG_ERROR([Version 1.99.16-beta of ocp-build is needed]))
+OPAM_REPO=/home/lefessan/WindowsSharedFolder/opam-repository-with-archives
+OPAM_REPO_OFFICIAL_REMOTE=ocaml
+OPAM_REPO_FORK_REMOTE=origin
+DOWNLOAD_URL_PREFIX=http://github.com/OCamlPro/opam-builder/archive/
 
 ###############################################################
 ##                                                            #
@@ -171,10 +175,6 @@ AC_SUBST(OCAMLLIB)
 AC_SUBST(OCAMLBIN)
 AC_SUBST(OCAML_USE_BINANNOT)
 AC_CONFIG_FILES(Makefile.config config.ocpgen ocaml-config.h)
-OPAM_REPO=/home/lefessan/WindowsSharedFolder/opam-repository-with-archives
-OPAM_REPO_OFFICIAL_REMOTE=ocaml
-OPAM_REPO_FORK_REMOTE=origin
-DOWNLOAD_URL_PREFIX=http://github.com/OCamlPro/opam-builder/archive/
 AC_OUTPUT
 
 echo
