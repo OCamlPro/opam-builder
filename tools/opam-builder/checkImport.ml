@@ -408,6 +408,7 @@ let print_report ~diff switches name =
         display: none;
        }
 </style>
+<input id=\"search\" class=\"search-query\" type=\"text\" placeholder=\"Search packages\"/>
 ";
 
 
@@ -430,7 +431,7 @@ let print_report ~diff switches name =
   Printf.fprintf oc "</tr>\n";
   Printf.fprintf oc "</table>\n";
 
-  Printf.fprintf oc "<table class=\"floatTable\">\n";
+  Printf.fprintf oc "<table id=\"packages\" class=\"floatTable\">\n";
 
   Printf.fprintf oc "<tr class=\"floatTr\">\n";
   Printf.fprintf oc "  <td><a href=\"report-last.html\">Package</a></td>\n";
@@ -652,6 +653,7 @@ else if(fhHeight==-1 && ft.offset().top + ft.outerHeight(true) - win.scrollTop()
 
 });
  </script>
+<script src=\"search.js\"> </script>
 ";
 
   CheckHtml.end_html oc;
