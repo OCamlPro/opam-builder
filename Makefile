@@ -1,18 +1,23 @@
-all:
-	ocp-build init
-	ocp-build
 
-install:
-	for tool in tools/*; do $(MAKE) -C $$tool install; done
+#############################################################################
+#
+#          This file is managed by ocp-autoconf.
+#
+#  Remove it from `manage_files` in 'ocp-autoconf.config' if you want to
+#  modify it manually.
+#
+#############################################################################
 
-clean:
-	ocp-build init
-	ocp-build clean
+include autoconf/Makefile.config
+
+all: ocp-build-build
+
+install: ocp-build-install
+
+clean: ocp-build-clean
+
+distclean: clean ocp-distclean
 	find . -name '*~' -exec rm -f {} \;
 
-distclean: clean
-	rm -rf _obuild
-	rm -f autoconf/Makefile.config
-	rm -f autoconf/config.status
-	rm -f autoconf/config.log
+include autoconf/Makefile.rules
 

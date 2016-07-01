@@ -1,27 +1,18 @@
-*.annot
-*.cmo
-*.cma
-*.cmi
-*.a
-*.o
-*.cmx
-*.cmxs
-*.cmxa
 
-# ocamlbuild working directory
-_build/
+#############################################################################
+#
+#          This file is managed by ocp-autoconf.
+#
+#  Remove it from `manage_files` in 'ocp-autoconf.config' if you want to
+#  modify it manually.
+#
+#############################################################################
 
-# ocamlbuild targets
-*.byte
-*.native
+# ocp-build working directories
+_obuild
 
-# oasis generated files
-setup.data
-setup.log
-/autoconf/Makefile.config
-/autoconf/config.log
-/autoconf/config.status
-/_obuild/
-/autoconf/autom4te.cache/
-/config.ocp
+# ocp-lint working directories
+_olint
+
+# backups of modified files
 *~

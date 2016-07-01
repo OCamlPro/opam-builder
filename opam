@@ -1,0 +1,36 @@
+(**************************************************************)
+(*                                                            *)
+(*      This file is managed by ocp-autoconf                  *)
+(*  Remove it from `manage_files` in 'ocp-autoconf.config'    *)
+(*  if you want to modify it manually (or use 'opam.trailer') *)
+(*                                                            *)
+(**************************************************************)
+
+opam-version: "1.2"
+maintainer: "Fabrice Le Fessant <fabrice.le_fessant@ocamlpro.com>"
+authors: [
+  "Fabrice Le Fessant <fabrice.le_fessant@ocamlpro.com>"
+]
+homepage: "http://opam.ocamlpro.com/builder"
+dev-repo: "https://github.com/OCamlPro/opam-builder.git"
+bug-reports: "https://github.com/OCamlPro/opam-builder/issues"
+build: [
+  [     "./configure"
+    "--prefix"
+    "%{prefix}%"
+    "--with-ocamldir=%{prefix}%/lib"
+    "--with-metadir=%{prefix}%/lib"
+  ]
+  [ make ]
+]
+install: [
+  [ make "install" ]
+]
+remove: [
+]
+depends: [
+     "jsonm"
+     "ocamlfind"
+     "ocp-build" {>= "1.99.16-beta" }
+]
+available: [ocaml-version >= "3.12.1"]
