@@ -164,7 +164,7 @@ let check_commit ~lint ~commit dirs switches =
           let lint = CopamLint.lint opam_file in
           CopamLint.save lint_file lint;
         else
-          File.file_of_string lint_file "lint disabled\n"
+          FileString.write_file lint_file "lint disabled\n"
       )
     ) p.package_versions;
   ) c.packages;

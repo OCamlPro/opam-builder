@@ -43,7 +43,7 @@ let parse_cudf cudf_file =
   let cudf2opam = Hashtbl.create 10000 in
   let opam2cudf = Hashtbl.create 10000 in
   try
-    File.iter_lines (fun line ->
+    FileString.iter_lines (fun line ->
       Printf.bprintf b "%s\n" line;
       if String.length line > 0 then
         let header, value = OcpString.cut_at line ' ' in
@@ -78,7 +78,7 @@ let parse_solution cudf solution_file =
   let packages = ref [] in
   try
     let last_package = ref None in
-    File.iter_lines (fun line ->
+    FileString.iter_lines (fun line ->
       if line = "FAIL" then raise Exit;
       if String.length line > 0 then
         let header, value = OcpString.cut_at line ' ' in

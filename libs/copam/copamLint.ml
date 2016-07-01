@@ -32,7 +32,7 @@ let lint opam_file =
     "%s %s > %s 2>&1" opam_lint opam_file log_file in
   Printf.eprintf "cmd=%s\n%!" cmd;
   let exitcode = Sys.command cmd in
-  let lines = try File.lines_of_file log_file with _ -> [] in
+  let lines = try FileLines.read_file log_file with _ -> [] in
   (try Sys.remove log_file with _ -> ());
   (exitcode, lines)
 
@@ -44,7 +44,7 @@ let save lint_file (exitcode, lines) =
   close_out oc
 
 let load lint_file =
-  let lines = File.lines_of_file lint_file in
+  let lines = FileLines.read_file lint_file in
   match lines with
   | [] -> 99, []
   | line :: lines ->

@@ -109,7 +109,7 @@ let iter_download_archives () =
         Printf.kprintf command
           "wget -o log.%s -O archive.%s --tries=1 --timeout=5 %s" version version url
       ) then begin
-        let lines = try File.lines_of_file ("log." ^ version) with
+        let lines = try FileLines.read_file ("log." ^ version) with
             _ -> [ "???" ] in
         CopamIssues.issue package version "download-failed" (
           Printf.sprintf "Could not download %s:" url
@@ -124,7 +124,7 @@ let iter_download_archives () =
         raise Exit
       end;
 
-      let md5sum = File.string_of_file "checksum" in
+      let md5sum = FileString.read_file "checksum" in
       let md5sum = String.sub md5sum 0 32 in
       if md5sum <> checksum then begin
         CopamIssues.issue package version "wrong-checksums" [
@@ -179,7 +179,7 @@ let fix_crcs versions =
           version url version &&
           Printf.kprintf command
           "md5sum archive.%s.tar.gz > checksum" version then begin
-            let md5sum = File.string_of_file "checksum" in
+            let md5sum = FileString.read_file "checksum" in
             let md5sum = String.sub md5sum 0 32 in
             let oc = open_out url_file in
             List.iter (fun (s,v) ->
@@ -234,7 +234,7 @@ let _ =
       command "git pull ocaml master" &&
       command last_commit_cmd then begin
 
-        let commit = File.string_of_file "last-commit.txt" in
+        let commit = FileString.read_file "last-commit.txt" in
         Sys.remove "last-commit.txt";
 
         if commit <> !current_commit then begin

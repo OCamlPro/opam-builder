@@ -33,7 +33,7 @@
         Printf.eprintf "Saving %s\n%!" filename;
         let st = Unix.lstat filename in
         let mtime = st.Unix.st_mtime in
-        backup_files := (filename, mtime, File.string_of_file filename)
+        backup_files := (filename, mtime, FileString.read_file filename)
         :: !backup_files
       end else begin
         Printf.eprintf "Warning: could not backup %s\n%!"  filename
@@ -44,6 +44,6 @@
   let restore t =
     List.iter (fun (filename, mtime, content) ->
       Printf.eprintf "Restoring %s\n%!" filename;
-      File.file_of_string filename content;
+      FileString.write_file filename content;
       Unix.utimes filename mtime mtime;
     ) t.backup_files

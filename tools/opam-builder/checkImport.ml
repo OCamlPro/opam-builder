@@ -76,7 +76,7 @@ let import_lint lint_file =
       package_versions := [];
       package := None
     in
-  File.iter_lines (fun line ->
+  FileString.iter_lines (fun line ->
       let header, line = OcpString.cut_at line ':' in
       match header with
       | "commit" -> commit_name := Some line
@@ -192,7 +192,7 @@ let import_switch switch_file =
   in
   let in_file = ref false in
   let file_lines = ref [] in
-  File.iter_lines (fun line ->
+  FileString.iter_lines (fun line ->
     if !in_file then begin
       match line with
       | "begin-build:false" | "builder:end-build" ->

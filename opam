@@ -31,6 +31,7 @@ remove: [
 depends: [
      "jsonm"
      "ocamlfind"
-     "ocp-build" {>= "1.99.16-beta" }
+     "ocp-build" {>= "1.99.17-beta" }
+     "ocplib-file"
 ]
 available: [ocaml-version >= "3.12.1"]

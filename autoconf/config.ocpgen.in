@@ -1,3 +1,4 @@
+conf_ocamlfind="@OCAMLFIND@"
 rootdir="@ROOTDIR@"
 prefix="@prefix@"
 exec_prefix="@exec_prefix@"
