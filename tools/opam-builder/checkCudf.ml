@@ -59,7 +59,7 @@ exception Deps of status
 let status_of_deps deps_file =
   try
     let packages = ref [] in
-    File.iter_lines (fun line ->
+    FileString.iter_lines (fun line ->
       match line with
       | "no-solution" -> raise (Deps NotInstallable)
       | "not-available" -> raise (Deps NotAvailable)
@@ -94,8 +94,8 @@ let check_installability state checksum version_dir version_name =
         CopamInstall.check_install
           state.root sw.sw_cudf ~switch:sw.sw_name version_name in
       let deps_content = deps_of_status status in
-      File.file_of_string log_file log_content;
-      File.file_of_string deps_file deps_content;
+      FileString.write_file log_file log_content;
+      FileString.write_file deps_file deps_content;
     )
   ) state.sws;
   ()
@@ -109,7 +109,7 @@ let status_of_files version_dir basename switch =
 
   let s_log =
     try
-      Some (File.string_of_file log_file)
+      Some (FileString.read_file log_file)
     with _ -> None
   in
   { s_status; s_log }

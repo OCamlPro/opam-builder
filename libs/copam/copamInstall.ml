@@ -145,7 +145,7 @@ let check_install t cudf ~switch version =
         Printf.eprintf "reading json..\n%!";
         if not (Sys.file_exists json_file) then
           Printf.eprintf "Json does not exist ???\n%!";
-        let json = File.string_of_file json_file in
+        let json = FileString.read_file json_file in
         Printf.eprintf "removing json..\n%!";
         (try Sys.remove json_file with _ -> ());
         begin
@@ -160,7 +160,7 @@ let check_install t cudf ~switch version =
       | 3 -> NotInstallable
       | exit -> ExternalError
     in
-    let log_content = File.string_of_file log_file in
+    let log_content = FileString.read_file log_file in
     (try Sys.remove log_file with _ -> ());
     (status, log_content)
   | Some cudf ->

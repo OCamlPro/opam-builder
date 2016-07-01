@@ -91,10 +91,10 @@ let build_and_install st ~switch version =
     Printf.eprintf "cmd=%s\n%!" cmd;
     Sys.command cmd
   in
-  let log_content = File.string_of_file log_file in
+  let log_content = FileString.read_file log_file in
   let builder_content =
     try
-      File.string_of_file builder_file with _ ->
+      FileString.read_file builder_file with _ ->
         Printf.eprintf "Error: %s has no %s\n%!" version builder_file;
         "" in
   (try Sys.remove log_file with _ -> ());
@@ -138,7 +138,7 @@ let check_build_and_install_version only_to_clean st c sw v =
               (Printf.sprintf "%s-%s-install" version_name sw.sw_name) in
           let result_file = install_prefix ^ ".result" in
           try
-            match File.string_of_file result_file with
+            match FileString.read_file result_file with
             | "SUCCESS\n" -> ()
             | "FAILURE\n" ->
               Printf.eprintf
@@ -181,10 +181,10 @@ let check_build_and_install_version only_to_clean st c sw v =
             in
             (* TODO: we should check that the consistency of the dependencies
                found before and used here. *)
-            File.file_of_string log_file log_content;
-            File.file_of_string build_file build_content;
+            FileString.write_file log_file log_content;
+            FileString.write_file build_file build_content;
             let result = if exit_code = 0 then "SUCCESS\n" else "FAILURE\n" in
-            File.file_of_string result_file result;
+            FileString.write_file result_file result;
             Printf.eprintf "Compilation of %s on %s was a %s%!"
               v.version_name sw.sw_name result;
             MemoryBackup.restore sw.sw_backup;
@@ -201,7 +201,7 @@ let check_build_and_install_version only_to_clean st c sw v =
             Printf.fprintf build_oc "disabled:skip:%s\n" v.version_name;
             close_out build_oc;
             close_out log_oc;
-            File.file_of_string result_file "FAILURE\n";
+            FileString.write_file result_file "FAILURE\n";
       );
     ()
 
@@ -410,16 +410,16 @@ let export_switch st c sw =
               let log_file = install_prefix ^ ".log" in
               let result_file = install_prefix ^ ".result" in
               try
-                match File.string_of_file result_file with
+                match FileString.read_file result_file with
                 | "SUCCESS\n" ->
                   Printf.fprintf oc "status:success\n";
-                  let build_content = File.string_of_file build_file in
+                  let build_content = FileString.read_file build_file in
                   Printf.fprintf oc "begin-build:true\n%s\nbegin-build:false\n"
                     build_content;
 
                 | "FAILURE\n" ->
-                  let log_content = File.string_of_file log_file in
-                  let build_content = File.string_of_file build_file in
+                  let log_content = FileString.read_file log_file in
+                  let build_content = FileString.read_file build_file in
                   Printf.fprintf oc "status:failure\n";
                   Printf.fprintf oc "begin-build:true\n%s\nbegin-build:false\n"
                     build_content;
@@ -473,7 +473,7 @@ let report_switch st c sw =
               let _log_file = install_prefix ^ ".log" in
               let result_file = install_prefix ^ ".result" in
               try
-                match File.string_of_file result_file with
+                match FileString.read_file result_file with
                 | "SUCCESS\n" -> incr nsuccess_versions
                 | "FAILURE\n" -> incr nfailed_versions
                 | _ -> raise Exit
@@ -539,7 +539,7 @@ let report_switch st c sw =
               let _log_file = install_prefix ^ ".log" in
               let result_file = install_prefix ^ ".result" in
               try
-                match File.string_of_file result_file with
+                match FileString.read_file result_file with
                 | "SUCCESS\n" ->
                   Printf.fprintf oc "  <td style=\"background-color: green;\"></td>\n";
                 | "FAILURE\n" ->
@@ -584,14 +584,14 @@ let report_switch st c sw =
               let log_file = install_prefix ^ ".log" in
               let result_file = install_prefix ^ ".result" in
               try
-                match File.string_of_file result_file with
+                match FileString.read_file result_file with
                 | "SUCCESS\n" -> ()
                 | "FAILURE\n" ->
                   version_header p v;
                   Printf.fprintf oc "<pre>%s</pre>"
-                    (File.string_of_file build_file);
+                    (FileString.read_file build_file);
                   Printf.fprintf oc "<pre>%s</pre>"
-                    (File.string_of_file log_file);
+                    (FileString.read_file log_file);
                 | _ -> raise Exit
               with _ ->
                 ()

@@ -36,7 +36,7 @@ let colon_pos = 20 (* Monitor opam... *)
 
 let load_lint lint_version filename =
   try
-    let lines = File.lines_of_file filename in
+    let lines = FileLines.read_file filename in
     let lint_warnings, lint_errors =
       match lines with
       |[ "exit-code:0" ] -> [], []
@@ -341,7 +341,7 @@ let autofix_packages dirs c =
 
 
   let replace_line filename pos1 s =
-    let lines = File.lines_of_file filename in
+    let lines = FileLines.read_file filename in
     let rec iter pos2 lines =
       match lines with
       | [] ->
@@ -354,7 +354,7 @@ let autofix_packages dirs c =
         else
           line :: (iter (pos2+1) lines)
     in
-    File.file_of_lines filename (iter 1 lines)
+    FileLines.write_file filename (iter 1 lines)
   in
 
 
@@ -444,14 +444,14 @@ let autofix_packages dirs c =
               let add_field field_name field_value =
                 List.iter (fun v ->
                     let opam_file = CheckUpdate.opam_file dirs v in
-                    let old_content = File.string_of_file opam_file in
-                    File.file_of_string (opam_file ^ ".orig") old_content;
+                    let old_content = FileString.read_file opam_file in
+                    FileString.write_file (opam_file ^ ".orig") old_content;
                     let new_content =
                       Printf.sprintf
                         "%s\n  (* auto-fix field %s for conf-* packages *)\n%s: %S\n"
                         old_content field_name field_name field_value
                     in
-                    File.file_of_string opam_file new_content
+                    FileString.write_file opam_file new_content
 
                   ) missing.(num)
               in
@@ -532,13 +532,13 @@ let autofix_packages dirs c =
                 | Some (content, v0) ->
                   List.iter (fun v ->
                       let opam_file = CheckUpdate.opam_file dirs v in
-                      let old_content = File.string_of_file opam_file in
-                      File.file_of_string (opam_file ^ ".orig") old_content;
+                      let old_content = FileString.read_file opam_file in
+                      FileString.write_file (opam_file ^ ".orig") old_content;
                       let new_content =
                         Printf.sprintf "%s\n  (* auto-fix field from %s *)\n%s\n"
                           old_content v0.version_name content
                       in
-                      File.file_of_string opam_file new_content
+                      FileString.write_file opam_file new_content
                     ) missing.(num)
         ) can_auto_fix;
     ) c.packages;

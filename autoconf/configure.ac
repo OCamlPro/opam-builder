@@ -110,6 +110,9 @@ AC_SUBST(OCAMLLIB)
 AC_SUBST(OCAMLOPT)
 AC_SUBST(OCAMLDEP)
 AC_SUBST(OCAMLBIN)
+if test "$OCAMLFIND" = "no"; then
+   AC_MSG_ERROR([You must install OCaml package 'ocamlfind'])
+fi
 AC_CHECK_TOOL([OCAML_TOOL_ocp_build],[ocp-build],[no])
 if test "$OCAML_TOOL_ocp_build" = "no"; then
    AC_MSG_ERROR([Please install OCaml tool 'ocp-build'.])
@@ -122,8 +125,12 @@ AC_CHECK_OCAML_PKG(ocp-build)
 if test "$OCAML_PKG_ocp_build" = "no"; then
    AC_MSG_ERROR([Please install OCaml package 'ocp-build'.])
 fi
-  AX_COMPARE_VERSION( [$OCAML_PKG_ocp_build_VERSION], [lt], [1.99.16-beta],
-     AC_MSG_ERROR([Version 1.99.16-beta of ocp-build is needed]))
+  AX_COMPARE_VERSION( [$OCAML_PKG_ocp_build_VERSION], [lt], [1.99.17-beta],
+     AC_MSG_ERROR([Version 1.99.17-beta of ocp-build is needed]))
+AC_CHECK_OCAML_PKG(ocplib-file)
+if test "$OCAML_PKG_ocplib_file" = "no"; then
+   AC_MSG_ERROR([Please install OCaml package 'ocplib-file'.])
+fi
 OPAM_REPO=/home/lefessan/WindowsSharedFolder/opam-repository-with-archives
 OPAM_REPO_OFFICIAL_REMOTE=ocaml
 OPAM_REPO_FORK_REMOTE=origin
@@ -147,6 +154,7 @@ DOWNLOAD_URL_PREFIX=http://github.com/OCamlPro/opam-builder/archive/
 ##                                                            #
 ###############################################################
 
+AC_SUBST(OCAMLFIND)
 AC_SUBST(CONFIGURE_ARGS)
 AC_SUBST(ROOTDIR)
 AC_SUBST(prefix)

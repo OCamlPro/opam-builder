@@ -592,6 +592,7 @@ OPAM_REPO_FORK_REMOTE
 OPAM_REPO_OFFICIAL_REMOTE
 OPAM_REPO
 ROOTDIR
+OCAML_PKG_ocplib_file
 OCAML_PKG_ocp_build
 OCAML_PKG_jsonm
 OCAML_TOOL_ocp_build
@@ -4065,6 +4066,9 @@ fi
 
 
 
+if test "$OCAMLFIND" = "no"; then
+   as_fn_error $? "You must install OCaml package 'ocamlfind'" "$LINENO" 5
+fi
 if test -n "$ac_tool_prefix"; then
   # Extract the first word of "${ac_tool_prefix}ocp-build", so it can be a program name with args.
 set dummy ${ac_tool_prefix}ocp-build; ac_word=$2
@@ -4239,7 +4243,7 @@ fi
                      -e 's/[^0-9]//g'`
 
 
-  ax_compare_version_B=`echo "1.99.16-beta" | sed -e 's/\([0-9]*\)/Z\1Z/g' \
+  ax_compare_version_B=`echo "1.99.17-beta" | sed -e 's/\([0-9]*\)/Z\1Z/g' \
                      -e 's/Z\([0-9]\)Z/Z0\1Z/g' \
                      -e 's/Z\([0-9][0-9]\)Z/Z0\1Z/g' \
                      -e 's/Z\([0-9][0-9][0-9]\)Z/Z0\1Z/g' \
@@ -4252,9 +4256,39 @@ x$ax_compare_version_B" | sed 's/^ *//' | sort -r | sed "s/x${ax_compare_version
 
 
     if test "$ax_compare_version" = "true" ; then
-    as_fn_error $? "Version 1.99.16-beta of ocp-build is needed" "$LINENO" 5
+    as_fn_error $? "Version 1.99.17-beta of ocp-build is needed" "$LINENO" 5
       fi
 
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for OCaml findlib package ocplib-file" >&5
+$as_echo_n "checking for OCaml findlib package ocplib-file... " >&6; }
+
+  unset found
+  unset pkg
+  found=no
+  for pkg in ocplib-file  ; do
+    if $OCAMLFIND query $pkg >/dev/null 2>/dev/null; then
+      OCAML_PKG_ocplib_file=$pkg
+      ocaml_pkg_version=$($OCAMLFIND query -l $pkg|grep version: | awk '{ print $2}')
+      OCAML_PKG_ocplib_file_VERSION=$ocaml_pkg_version
+
+      { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ocaml_pkg_version" >&5
+$as_echo "$ocaml_pkg_version" >&6; }
+      found=yes
+      break
+    fi
+  done
+  if test "$found" = "no" ; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: not found" >&5
+$as_echo "not found" >&6; }
+    OCAML_PKG_ocplib_file=no
+  fi
+
+
+
+if test "$OCAML_PKG_ocplib_file" = "no"; then
+   as_fn_error $? "Please install OCaml package 'ocplib-file'." "$LINENO" 5
+fi
 OPAM_REPO=/home/lefessan/WindowsSharedFolder/opam-repository-with-archives
 OPAM_REPO_OFFICIAL_REMOTE=ocaml
 OPAM_REPO_FORK_REMOTE=origin
@@ -4277,6 +4311,7 @@ DOWNLOAD_URL_PREFIX=http://github.com/OCamlPro/opam-builder/archive/
 ## END of autoconf.ac                                         #
 ##                                                            #
 ###############################################################
+
 
 
 
