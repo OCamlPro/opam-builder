@@ -434,7 +434,7 @@ let display_package oc pd =
                   Printf.fprintf oc "<td class='bg-green'/>\n";
 
                 | StatusLint ([], lint_warnings) ->
-                  Printf.fprintf oc "<td class='bg=orange'\">";
+                  Printf.fprintf oc "<td class='bg-orange'\">";
                   display_link oc sd (fun oc ->
                       List.iter (fun (num, _) ->
                           Printf.fprintf oc "%d " num;
@@ -668,8 +668,11 @@ let display_summary oc display =
         nversions;
       if !lint_cd > 0 then begin
         if !lint_errors > 0 then
-          Printf.fprintf oc "<td class='bg-orange'>%d</td>\n"
-            (!lint_errors + !lint_warnings)
+          Printf.fprintf oc "<td class='bg-orange'>%s</td>\n"
+            (if !lint_warnings > 0 then
+               Printf.sprintf "%d + %d" !lint_errors !lint_warnings
+             else
+               string_of_int !lint_errors)
         else
         if !lint_warnings > 0 then
           Printf.fprintf oc "<td class='bg-greeny'>%d</td>\n" !lint_warnings
