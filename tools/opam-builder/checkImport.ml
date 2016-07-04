@@ -623,7 +623,7 @@ let display_summary oc display =
       let lint_warnings = ref 0 in
       let lint_cd = ref 0 in
       List.iter (fun vd ->
-          List.iteri (fun i sd ->
+          OcpList.iteri (fun i sd ->
               match sd.sd_status with
               | StatusLint ([], []) ->
                 ninstallable.(i) <- ninstallable.(i) + 1;
