@@ -51,6 +51,45 @@ type status =
   | StatusFailure of string list * string list * string list
   | StatusSuccess of string list * string list
   | StatusLint of (int * string) list * (int * string) list
+  | StatusUnknown
+
+type mode =
+  | Full
+  | Diff
+  | Summary
+
+type package_display = {
+  mutable pd_display : bool;
+  pd_name : string;
+  pd_dir : string;
+  mutable pd_versions : version_display list;
+}
+
+and version_display = {
+  mutable vd_display : bool;
+  vd_name : string;
+  vd_dir : string;
+  mutable vd_statuses : status_display list;
+  vd_pd : package_display;
+}
+
+and status_display = {
+  mutable sd_digest : CheckDigest.t option ref;
+  sd_status : status;
+  sd_vd : version_display;
+  sd_cd : compiler_display;
+}
+
+and compiler_display = {
+  cd_name : string;
+  cd_commit : string;
+  cd_date : string;
+}
+
+and display = {
+  pds : package_display list;
+  cds : compiler_display list;
+}
 
 (* For now, we raise this exception, as it is probably the case
    that the file was read before it was fully generated. Ideally,
@@ -120,7 +159,12 @@ let import_lint lint_file =
   commit_package ();
   match !commit_name, !check_date with
   | Some commit_name, Some check_date ->
-    (commit_name, check_date, "Lint", packages, versions)
+    let cd = {
+      cd_commit = commit_name;
+      cd_date = check_date;
+      cd_name = "Lint";
+    } in
+    (cd, packages, versions)
   | _ -> raise NotComplete
 
 
@@ -243,20 +287,208 @@ let import_switch switch_file =
   commit_package ();
   match !commit_name, !check_date, !switch_name with
   | Some commit_name, Some check_date, Some switch_name ->
-    (commit_name, check_date, switch_name, packages, versions)
+    let cd = {
+      cd_commit = commit_name;
+      cd_date = check_date;
+      cd_name = switch_name;
+    } in
+    (cd, packages, versions)
   | _ ->
     raise NotComplete
 
 let html_dir = "html"
 
-let print_report ~diff switches name =
+let need_dir dir =
+  if not (Sys.file_exists dir) then Unix.mkdir dir 0o755
 
-  if not (Sys.file_exists html_dir) then
-    Unix.mkdir html_dir 0o755;
+let print_status_report vd cd status =
+  let pd = vd.vd_pd in
 
-  (* Find all packages, and all versions per package *)
+  need_dir html_dir;
+  need_dir pd.pd_dir;
+  need_dir vd.vd_dir;
+
+  let temp_file = Filename.concat vd.vd_dir "tmp" in
+  let oc = open_out temp_file in
+  CheckHtml.begin_html oc vd.vd_name;
+  Printf.fprintf oc "<h1>Version: %s</h1>\n%!" vd.vd_name;
+  Printf.fprintf oc "<p>Return to <a href=\"../../report-last.html#%s\">last report</a></p>\n" vd.vd_name;
+  begin match status with
+    | StatusLint (lint_errors, lint_warnings) ->
+      begin
+        match lint_errors with
+        | [] -> ()
+        | _ ->
+          Printf.fprintf oc "<h3>Errors</h3>\n";
+          Printf.fprintf oc "<ul>\n";
+          List.iter (fun (num, msg) ->
+              Printf.fprintf oc "  <li> %d: %s\n" num msg
+            ) lint_errors;
+          Printf.fprintf oc "</ul>\n";
+      end;
+
+      begin
+        match lint_warnings with
+        | [] -> ()
+        | _ ->
+          Printf.fprintf oc "<h3>Warnings</h3>\n";
+          Printf.fprintf oc "<ul>\n";
+          List.iter (fun (num, msg) ->
+              Printf.fprintf oc "  <li> %d: %s\n" num msg
+            ) lint_warnings;
+          Printf.fprintf oc "</ul>\n";
+      end;
+
+
+    | StatusNonAvailable ->
+      Printf.fprintf oc
+        "<h3>This version is not available for this version of OCaml</h3>\n";
+
+    | StatusNonInstallable ->
+      Printf.fprintf oc
+        "<h3>This version has broken dependencies for this version of OCaml</h3>\n";
+
+    | StatusBuilderError ->
+      Printf.fprintf oc
+        "<h3>Builder error</h3>\n"
+    | StatusSuccess (deps, build_content) ->
+      Printf.fprintf oc
+        "<h3>Build and install successful</h3>\n";
+      Printf.fprintf oc "<h3>Dependencies:</h3>\n";
+      Printf.fprintf oc "<ul>\n";
+      List.iter (fun dep ->
+          Printf.fprintf oc "  <li><p>%s</p></li>\n" dep) deps;
+      Printf.fprintf oc "</ul>\n";
+      Printf.fprintf oc "<h3>Build file:</h3>\n";
+      Printf.fprintf oc "<pre>";
+      List.iter (fun line -> Printf.fprintf oc "%s\n" line)
+        build_content;
+      Printf.fprintf oc "</pre>";
+    | StatusFailure (deps, log_content, build_content) ->
+      Printf.fprintf oc
+        "<h3>Build failed</h3>\n";
+      Printf.fprintf oc "<h3>Dependencies:</h3>\n";
+      Printf.fprintf oc "<ul>\n";
+      List.iter (fun dep ->
+          Printf.fprintf oc "  <li><p>%s</p></li>\n" dep) deps;
+      Printf.fprintf oc "</ul>\n";
+      Printf.fprintf oc "<h3>Build file:</h3>\n";
+      Printf.fprintf oc "<pre>";
+      List.iter (fun line -> Printf.fprintf oc "%s\n" line)
+        build_content;
+      Printf.fprintf oc "</pre>";
+      Printf.fprintf oc "<h3>Log file:</h3>\n";
+      Printf.fprintf oc "<pre>";
+      List.iter (fun line -> Printf.fprintf oc "%s\n" line)
+        log_content;
+      Printf.fprintf oc "</pre>";
+    | StatusUnknown -> assert false
+  end;
+  CheckHtml.end_html oc;
+  close_out oc;
+  let digest = CheckDigest.file temp_file in
+  let final_file = Filename.concat vd.vd_dir
+      (CheckDigest.to_printable_string digest) in
+  if not (Sys.file_exists final_file) then
+    Sys.rename temp_file final_file;
+  digest
+
+
+let display_link oc sd msg =
+  let vd = sd.sd_vd in
+  let pd = vd.vd_pd in
+  let cd = sd.sd_cd in
+  let digest =
+    match !(sd.sd_digest) with
+    | Some digest -> digest
+    | None ->
+      let digest = print_status_report vd cd sd.sd_status in
+      sd.sd_digest := Some digest;
+      digest
+  in
+  Printf.fprintf oc "<a href=\"%s/%s/%s\">"
+    pd.pd_name vd.vd_name
+    (CheckDigest.to_printable_string digest);
+  msg oc;
+  Printf.fprintf oc "</a>";
+  ()
+
+let display_package oc pd =
+    if pd.pd_display then begin
+      Printf.fprintf oc "<tr>\n";
+      Printf.fprintf oc "  <td><a name=\"%s\">%s</a></td>\n"
+        pd.pd_name pd.pd_name;
+      Printf.fprintf oc "  <td></td>\n";
+      Printf.fprintf oc "</tr>\n";
+
+      List.iter (fun vd ->
+          if vd.vd_display then begin
+            Printf.fprintf oc "<tr>\n";
+            Printf.fprintf oc
+              "  <td><a name=\"%s\"> </a><a href=\"http://github.com/ocaml/opam-repository/tree/master/packages/%s/%s/opam\">%s</a></td>\n"
+              vd.vd_name pd.pd_name vd.vd_name  vd.vd_name;
+
+            List.iter (fun sd ->
+                match sd.sd_status with
+                | StatusLint ([], []) ->
+                  Printf.fprintf oc "<td class='bg-green'/>\n";
+
+                | StatusLint ([], lint_warnings) ->
+                  Printf.fprintf oc "<td class='bg-orange'\">";
+                  display_link oc sd (fun oc ->
+                      List.iter (fun (num, _) ->
+                          Printf.fprintf oc "%d " num;
+                        ) lint_warnings);
+                  Printf.fprintf oc "</td>\n"
+
+                | StatusLint (lint_errors, lint_warnings) ->
+                  Printf.fprintf oc "<td class='bg-red'\">";
+                  display_link oc sd (fun oc ->
+                      List.iter (fun (num, _) ->
+                          Printf.fprintf oc "%d " num;
+                        ) lint_errors;
+                      Printf.fprintf oc ": ";
+                      List.iter (fun (num, _) ->
+                          Printf.fprintf oc "%d " num;
+                        ) lint_warnings
+                    );
+                  Printf.fprintf oc "</td>\n"
+
+                | StatusBuilderError ->
+                  Printf.fprintf oc "<td>\n";
+                  display_link oc sd (fun oc ->
+                      Printf.fprintf oc "Builder Error");
+                  Printf.fprintf oc "</td>\n";
+                | StatusNonInstallable ->
+                  Printf.fprintf oc "<td class='bg-red'>\n";
+                  Printf.fprintf oc "<a href=\"http://ows.irill.org/latest/today/packages/%s-page.html#%s\">" pd.pd_name vd.vd_name;
+                  Printf.fprintf oc "Deps";
+                  Printf.fprintf oc "</a>";
+                  Printf.fprintf oc "</td>\n"
+                | StatusNonAvailable ->
+                  Printf.fprintf oc "  <td>\n";
+                  Printf.fprintf oc "</td>\n"
+                | StatusSuccess (deps, build_content) ->
+                  Printf.fprintf oc "<td class='bg-green'\">\n";
+                  display_link oc sd (fun oc -> Printf.fprintf oc "Ok");
+                  Printf.fprintf oc "</td>\n"
+                | StatusFailure (deps, build_content, log_content) ->
+                  Printf.fprintf oc "<td class='bg-orange'\">\n";
+                  display_link oc sd (fun oc -> Printf.fprintf oc "Fail");
+                  Printf.fprintf oc "</td>\n"
+                | StatusUnknown ->
+                  Printf.fprintf oc "<td>Unknown</td>\n"
+
+              ) vd.vd_statuses;
+
+            Printf.fprintf oc "</tr>\n";
+          end
+        ) pd.pd_versions
+    end
+
+let get_display switches =
   let packages = ref StringMap.empty in
-  List.iter (fun (_,_,_,ps, _) ->
+  List.iter (fun (_cd,ps, _versions) ->
 
       Hashtbl.iter (fun package_name package_versions ->
           let p =
@@ -274,114 +506,223 @@ let print_report ~diff switches name =
         ) ps
     ) switches;
 
-  (* Create one report per package/version *)
+  let pds = ref [] in
+
   StringMap.iter (fun package_name package_versions ->
       let package_dir = Filename.concat html_dir package_name in
-      if not (Sys.file_exists package_dir) then
-        Unix.mkdir package_dir 0o755;
+      need_dir package_dir;
+
+      let pd = {
+        pd_name = package_name;
+        pd_display = true;
+        pd_dir = package_dir;
+        pd_versions = [];
+      } in
+      pds := pd :: !pds;
 
       StringSet.iter (fun version_name ->
           let version_dir = Filename.concat package_dir version_name in
-          if not (Sys.file_exists version_dir) then
-            Unix.mkdir version_dir 0o755;
+          let vd = {
+            vd_name = version_name;
+            vd_dir = version_dir;
+            vd_display = true;
+            vd_statuses = [];
+            vd_pd = pd;
+          } in
+          pd.pd_versions <- vd :: pd.pd_versions;
 
-          List.iter (fun (commit, date, switch, _, versions) ->
-
-              try
-                let status, ref = Hashtbl.find versions version_name in
-                let temp_file = Filename.concat version_dir "tmp" in
-                let oc = open_out temp_file in
-                CheckHtml.begin_html oc version_name;
-                Printf.fprintf oc "<h1>Version: %s</h1>\n%!" version_name;
-                Printf.fprintf oc "<p>Return to <a href=\"../../report-last.html#%s\">last report</a></p>\n" version_name;
-                begin match status with
-                  | StatusLint (lint_errors, lint_warnings) ->
-                    begin
-                      match lint_errors with
-                      | [] -> ()
-                      | _ ->
-                        Printf.fprintf oc "<h3>Errors</h3>\n";
-                        Printf.fprintf oc "<ul>\n";
-                        List.iter (fun (num, msg) ->
-                            Printf.fprintf oc "  <li> %d: %s\n" num msg
-                          ) lint_errors;
-                        Printf.fprintf oc "</ul>\n";
-                    end;
-
-                    begin
-                      match lint_warnings with
-                      | [] -> ()
-                      | _ ->
-                        Printf.fprintf oc "<h3>Warnings</h3>\n";
-                        Printf.fprintf oc "<ul>\n";
-                        List.iter (fun (num, msg) ->
-                            Printf.fprintf oc "  <li> %d: %s\n" num msg
-                          ) lint_warnings;
-                        Printf.fprintf oc "</ul>\n";
-                    end;
-
-
-                  | StatusNonAvailable ->
-                    Printf.fprintf oc
-                      "<h3>This version is not available for this version of OCaml</h3>\n";
-
-                  | StatusNonInstallable ->
-                    Printf.fprintf oc
-                      "<h3>This version has broken dependencies for this version of OCaml</h3>\n";
-
-                  | StatusBuilderError ->
-                    Printf.fprintf oc
-                      "<h3>Builder error</h3>\n"
-                  | StatusSuccess (deps, build_content) ->
-                    Printf.fprintf oc
-                      "<h3>Build and install successful</h3>\n";
-                    Printf.fprintf oc "<h3>Dependencies:</h3>\n";
-                    Printf.fprintf oc "<ul>\n";
-                    List.iter (fun dep ->
-                        Printf.fprintf oc "  <li><p>%s</p></li>\n" dep) deps;
-                    Printf.fprintf oc "</ul>\n";
-                    Printf.fprintf oc "<h3>Build file:</h3>\n";
-                    Printf.fprintf oc "<pre>";
-                    List.iter (fun line -> Printf.fprintf oc "%s\n" line)
-                      build_content;
-                    Printf.fprintf oc "</pre>";
-                  | StatusFailure (deps, log_content, build_content) ->
-                    Printf.fprintf oc
-                      "<h3>Build failed</h3>\n";
-                    Printf.fprintf oc "<h3>Dependencies:</h3>\n";
-                    Printf.fprintf oc "<ul>\n";
-                    List.iter (fun dep ->
-                        Printf.fprintf oc "  <li><p>%s</p></li>\n" dep) deps;
-                    Printf.fprintf oc "</ul>\n";
-                    Printf.fprintf oc "<h3>Build file:</h3>\n";
-                    Printf.fprintf oc "<pre>";
-                    List.iter (fun line -> Printf.fprintf oc "%s\n" line)
-                      build_content;
-                    Printf.fprintf oc "</pre>";
-                    Printf.fprintf oc "<h3>Log file:</h3>\n";
-                    Printf.fprintf oc "<pre>";
-                    List.iter (fun line -> Printf.fprintf oc "%s\n" line)
-                      log_content;
-                    Printf.fprintf oc "</pre>";
-                end;
-                CheckHtml.end_html oc;
-                close_out oc;
-                let digest = CheckDigest.file temp_file in
-                let final_file = Filename.concat version_dir
-                    (CheckDigest.to_printable_string digest) in
-                if not (Sys.file_exists final_file) then
-                  Sys.rename temp_file final_file;
-                ref := Some digest
-              with Not_found -> ()
-
+          List.iter (fun (cd,_,versions) ->
+              let status, ref =
+                try
+                  Hashtbl.find versions version_name
+                with Not_found -> StatusUnknown, ref None
+              in
+              let sd = {
+                sd_status = status;
+                sd_digest = ref;
+                sd_vd = vd;
+                sd_cd = cd;
+              } in
+              vd.vd_statuses <- sd :: vd.vd_statuses
             ) switches;
-
-
-        ) !package_versions
+          vd.vd_statuses <- List.rev vd.vd_statuses
+        ) !package_versions;
+      pd.pd_versions <- List.rev pd.pd_versions
 
     ) !packages;
 
+  let cds = List.map (fun (cd,_,_) -> cd) switches in
+  let pds = List.rev !pds in
+  { pds; cds }
 
+let diff_mode display =
+  List.iter (fun pd ->
+      pd.pd_display <- false;
+
+      let display_package () =
+        pd.pd_display <- true
+      in
+      List.iter (fun vd ->
+          vd.vd_display <- false;
+          let display_version () =
+            display_package ();
+            vd.vd_display <- true;
+          in
+
+          let should_display =
+            let statuses = ref [] in
+            List.iter (fun sd ->
+                let status =
+                  match sd.sd_status with
+                  | StatusNonAvailable -> ""
+                  | StatusNonInstallable -> "BrokenDeps"
+                  | StatusBuilderError -> "BuilderFailed"
+                  | StatusFailure _ -> "Failed"
+                  | StatusSuccess _ -> "OK"
+                  | StatusLint _ -> "Lint"
+                  | StatusUnknown -> "Unknown"
+                in
+                match !statuses with
+                | [] | [_] -> statuses := status :: !statuses
+                | s :: _ ->
+                  if s <> status then
+                    statuses := status :: !statuses
+              ) vd.vd_statuses;
+
+            match !statuses with
+            | [] | [_] -> true
+            | [s1;s2] -> s1 <> s2
+            | _ :: _ :: _ :: _ -> true
+          in
+
+          if should_display then display_version ();
+        ) pd.pd_versions
+    ) display.pds
+
+let all_mode display =
+  List.iter (fun pd ->
+      if not pd.pd_display then pd.pd_display <- true;
+      List.iter (fun vd ->
+          if not vd.vd_display then vd.vd_display <- true;
+        ) pd.pd_versions
+    ) display.pds
+
+type pd_cd_status =
+  | PackageNotAvailable   (* disabled for this switch *)
+  | PackageNotInstallable (* deps or build errors *)
+  | PackageHasCandidates  (* some errors *)
+  | PackageInstallable    (* all candidates installable *)
+
+let display_summary oc display =
+  let ncds = List.length display.cds in
+  List.iter (fun pd ->
+      let nversions = List.length pd.pd_versions in
+      let ncandidates = Array.make ncds 0 in
+      let ninstallable = Array.make ncds 0 in
+      let lint_errors = ref 0 in
+      let lint_warnings = ref 0 in
+      let lint_cd = ref 0 in
+      List.iter (fun vd ->
+          OcpList.iteri (fun i sd ->
+              match sd.sd_status with
+              | StatusLint ([], []) ->
+                ninstallable.(i) <- ninstallable.(i) + 1;
+                ncandidates.(i) <- ncandidates.(i) + 1;
+                lint_cd := 1;
+              | StatusLint ([], _) ->
+                ninstallable.(i) <- ninstallable.(i) + 1;
+                incr lint_warnings;
+                lint_cd := 1;
+              | StatusLint _ ->
+                incr lint_errors;
+                ninstallable.(i) <- ninstallable.(i) + 1;
+                lint_cd := 1;
+              | StatusNonInstallable ->
+                ncandidates.(i) <- ncandidates.(i) + 1
+              | StatusFailure _ ->
+                ncandidates.(i) <- ncandidates.(i) + 1
+              | StatusSuccess _ ->
+                ncandidates.(i) <- ncandidates.(i) + 1;
+                ninstallable.(i) <- ninstallable.(i) + 1
+              | StatusBuilderError -> ()
+              | StatusUnknown -> ()
+              | StatusNonAvailable -> ()
+            ) vd.vd_statuses
+        ) pd.pd_versions;
+
+      let nins = ref 0 in
+      let no_avail = ref 0 in
+      for i = 0 to ncds - 1 do
+        if ninstallable.(i) > 0 then incr nins else
+        if ncandidates.(i) = 0 then incr no_avail
+      done;
+
+      Printf.fprintf oc "<tr>\n";
+      Printf.fprintf oc "<td class='bg-%s'><a href='report-full.html#%s'>%s</a> (%d versions)</td>\n"
+        (if !nins = ncds then "green" else
+         if !nins = !lint_cd then "red" else
+         if !nins + !no_avail = ncds then "greeny" else
+           "orange")
+        pd.pd_name
+        pd.pd_name
+        nversions;
+      if !lint_cd > 0 then begin
+        if !lint_errors > 0 then
+          Printf.fprintf oc "<td class='bg-orange'>%s</td>\n"
+            (if !lint_warnings > 0 then
+               Printf.sprintf "%d + %d" !lint_errors !lint_warnings
+             else
+               string_of_int !lint_errors)
+        else
+        if !lint_warnings > 0 then
+          Printf.fprintf oc "<td class='bg-greeny'>%d</td>\n" !lint_warnings
+        else
+          Printf.fprintf oc "<td class='bg-green'></td>\n"
+      end;
+      for i = !lint_cd to ncds -1 do
+        let (color, content) =
+          if ninstallable.(i) = nversions then
+            ("green", "")
+          else
+          if ninstallable.(i) = ncandidates.(i) &&
+             ncandidates.(i) > 0 then
+            ("greeny", string_of_int ncandidates.(i))
+          else
+          if ncandidates.(i) = 0 then
+            ("white", "")
+          else
+          if ninstallable.(i) = 0 then
+            ("red", Printf.sprintf "%d/%d" ninstallable.(i) ncandidates.(i))
+          else
+            ("orange", Printf.sprintf "%d/%d" ninstallable.(i) ncandidates.(i))
+        in
+        Printf.fprintf oc "<td class='bg-%s'>%s</td>\n" color content
+      done;
+      Printf.fprintf oc "</tr>\n";
+
+    ) display.pds
+
+
+let print_report ~mode display switch_name =
+  need_dir html_dir;
+
+  begin match mode with
+    | Full | Summary -> all_mode display
+    | Diff -> diff_mode display
+  end;
+
+  let name, alter =
+    if switch_name = "" then
+      match mode with
+      | Summary -> "last", "full"
+      | Full -> "full", "last"
+      | Diff -> assert false
+    else
+      match mode with
+      | Summary -> assert false
+      | Full -> switch_name ^ "-full", switch_name
+      | Diff -> switch_name, switch_name ^ "-full"
+  in
   let oc = open_out (Filename.concat html_dir
                        (Printf.sprintf "report-%s.html" name)) in
   CheckHtml.begin_html oc (Printf.sprintf "Report: %s" name);
@@ -390,215 +731,99 @@ let print_report ~diff switches name =
   Printf.fprintf oc "
 <script src=\"jquery-2.2.4.min.js\"></script>
 <style type=\"text/css\" media=\"screen\">
-     .floatTable td, .floatHolder td {
-                 padding: 5px;
-                 width: 100%%;
-      }
-     .floatTr {
-        background-color: #bbb;
-      }
-     .floatTr2 {
-        background-color: #bbb;
-      }
-      .floatHolder {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100;
-        display: none;
-       }
+.floatTable td, .floatHolder td { padding: 5px;width: 100%%;}
+.floatTr { background-color: #bbb; }
+.floatTr2 { background-color: #bbb; }
+.floatHolder { position: fixed; top: 0; left: 0; width: 100; display: none; }
+.bg-green { background-color: green; }
+.bg-greeny { background-color: #4f4; }
+.bg-orange { background-color: orange; }
+.bg-red { background-color: red; }
+.bg-white { background-color: white; }
 </style>
-<input id=\"search\" class=\"search-query\" type=\"text\" placeholder=\"Search packages\"/>
+";
+  Printf.fprintf oc "<input id=\"search\" class=\"search-query\" type=\"text\" placeholder=\"Search packages\"/>
 ";
 
 
-  if diff then begin
-    Printf.fprintf oc "<h2>Diff Mode: only status changes are displayed</h2>\n";
+  begin match mode with
+    | Diff ->
+      Printf.fprintf oc
+        "<h2>Diff Mode: only status changes are displayed (<a href='report-%s.html'>Full</a>)</h2>\n" alter
+    | Summary ->
+      Printf.fprintf oc
+        "<h2>Summary Mode: only packages are displayed (<a href='report-%s.html'>Full</a>)</h2>\n" alter
+    | Full ->
+      Printf.fprintf oc
+        "<h2>Full Mode: all packages are displayed (<a href='report-%s.html'>Summary</a>)</h2>\n" alter
   end;
 
   Printf.fprintf oc "<table class=\"floatHolder\">\n";
   Printf.fprintf oc "<tr class=\"floatTr2\">\n";
   Printf.fprintf oc "  <td><a href=\"report-last.html\">Package</a></td>\n";
-  List.iter (fun (commit, date, switch, _, _) ->
+  List.iter (fun cd ->
 
-      if Sys.file_exists (Printf.sprintf "%s/report-%s.html" html_dir switch)
+      if Sys.file_exists (Printf.sprintf "%s/report-%s.html" html_dir cd.cd_name)
       then
         Printf.fprintf oc "  <td><a href=\"report-%s.html\">%s</a></td>\n"
-          switch switch
+          cd.cd_name cd.cd_name
       else
-        Printf.fprintf oc "  <td>%s</td>\n" switch;
-    ) switches;
+        Printf.fprintf oc "  <td>%s</td>\n" cd.cd_name;
+    ) display.cds;
   Printf.fprintf oc "</tr>\n";
   Printf.fprintf oc "</table>\n";
 
   Printf.fprintf oc "<table id=\"packages\" class=\"floatTable\">\n";
 
+
+  (****** Table line with compiler names ******)
+
   Printf.fprintf oc "<tr class=\"floatTr\">\n";
   Printf.fprintf oc "  <td><a href=\"report-last.html\">Package</a></td>\n";
-  List.iter (fun (commit, date, switch, _, _) ->
+  List.iter (fun cd ->
 
-      if Sys.file_exists (Printf.sprintf "%s/report-%s.html" html_dir switch)
+
+      if Sys.file_exists (Printf.sprintf "%s/report-%s.html" html_dir cd.cd_name)
       then
         Printf.fprintf oc "  <td><a href=\"report-%s.html\">%s</a></td>\n"
-          switch switch
+          cd.cd_name cd.cd_name
       else
-        Printf.fprintf oc "  <td>%s</td>\n" switch;
-    ) switches;
+        Printf.fprintf oc "  <td>%s</td>\n" cd.cd_name
+    ) display.cds;
   Printf.fprintf oc "</tr>\n";
 
+  begin match mode with
+    | Diff | Full ->
 
-  Printf.fprintf oc "<tr class=\"floatTr\">\n";
-  Printf.fprintf oc "  <td>Commit: </td>\n";
-  List.iter (fun (commit, date, switch, _, _) ->
-      Printf.fprintf oc "  <td><a href=\"https://github.com/ocaml/opam-repository/commit/%s\">%s</a></td>\n" commit commit;
-    ) switches;
-  Printf.fprintf oc "</tr>\n";
+      (****** Table line with commits   ******)
 
-  Printf.fprintf oc "<tr>\n";
-  Printf.fprintf oc "  <td>Date:</td>\n";
-  List.iter (fun (commit, date, switch, _, _) ->
-      Printf.fprintf oc "  <td>%s</td>\n"
-        (CheckDate.ISO8601.of_float
-           (float_of_string date))
-    ) switches;
-  Printf.fprintf oc "</tr>\n";
+      Printf.fprintf oc "<tr class=\"floatTr\">\n";
+      Printf.fprintf oc "  <td>Commit: </td>\n";
+      List.iter (fun cd ->
+          Printf.fprintf oc "  <td><a href=\"https://github.com/ocaml/opam-repository/commit/%s\">%s</a></td>\n" cd.cd_commit cd.cd_commit;
+        ) display.cds;
+      Printf.fprintf oc "</tr>\n";
 
-  StringMap.iter (fun package_name package_versions ->
 
-      let display_package =
-        let display = ref false in
-        function () ->
-          if not !display then begin
-            display := true;
-            Printf.fprintf oc "<tr>\n";
-            Printf.fprintf oc "  <td><a name=\"%s\">%s</a></td>\n"
-              package_name package_name;
-            Printf.fprintf oc "  <td></td>\n";
-            Printf.fprintf oc "</tr>\n";
-          end
-      in
-      StringSet.iter (fun version_name ->
+      (****** Table line with dates   ******)
 
-          let display_version =
-            let display = ref false in
-            function () ->
-              if not !display then begin
-                display_package ();
-                Printf.fprintf oc "<tr>\n";
-                Printf.fprintf oc "  <td><a name=\"%s\"> </a><a href=\"http://github.com/ocaml/opam-repository/tree/master/packages/%s/%s/opam\">%s</a></td>\n"
-                  version_name package_name version_name  version_name;
-              end
-          in
 
-          let should_display =
-            not diff ||
-            (let statuses = ref [] in
-             List.iter (fun (_,_,_,_,versions) ->
-                 let status =
-                   try
-                     let status, _ref = Hashtbl.find versions version_name in
-                     status
-                   with Not_found ->
-                     StatusNonAvailable
-                 in
-                 let status =
-                   match status with
-                   | StatusNonAvailable -> ""
-                   | StatusNonInstallable -> "BrokenDeps"
-                   | StatusBuilderError -> "BuilderFailed"
-                   | StatusFailure _ -> "Failed"
-                   | StatusSuccess _ -> "OK"
-                   | StatusLint _ -> "Lint"
-                 in
-                 match !statuses with
-                 | [] | [_] -> statuses := status :: !statuses
-                 | s :: _ ->
-                   if s <> status then
-                     statuses := status :: !statuses
-               ) switches;
+      Printf.fprintf oc "<tr>\n";
+      Printf.fprintf oc "  <td>Date:</td>\n";
+      List.iter (fun cd ->
+          Printf.fprintf oc "  <td>%s</td>\n"
+            (CheckDate.ISO8601.of_float (float_of_string cd.cd_date))
+        ) display.cds;
+      Printf.fprintf oc "</tr>\n";
 
-             match !statuses with
-             | [] | [_] -> true
-             | [s1;s2] -> s1 <> s2
-             | _ :: _ :: _ :: _ -> true
-            )
-          in
 
-          if should_display then begin
-            display_version ();
-            List.iter (fun (_,_,_,_,versions) ->
+      (****** Table lines with packages   ******)
+      List.iter (display_package oc) display.pds;
 
-                try
-                  let status, ref = Hashtbl.find versions version_name in
-                  let with_link msg =
-                    Printf.fprintf oc "  <a href=\"%s/%s/%s\">"
-                      package_name version_name
-                      (match !ref with
-                       | None -> assert false
-                       | Some digest ->
-                         CheckDigest.to_printable_string digest);
-                    msg oc;
-                    Printf.fprintf oc "  </a>\n";
-                  in
-                  match status with
-                  | StatusLint (lint_errors, lint_warnings) ->
-                    begin
-                      match lint_errors with
-                      | _ :: _ ->
-                        Printf.fprintf oc "  <td style=\"background-color: red;\">";
-                        with_link (fun oc ->
-                            List.iter (fun (num, _) ->
-                                Printf.fprintf oc "%d " num;
-                              ) lint_errors;
-                            Printf.fprintf oc ": ";
-                            List.iter (fun (num, _) ->
-                                Printf.fprintf oc "%d " num;
-                              ) lint_warnings
-                          );
-                        Printf.fprintf oc "</td>\n"
-                      | [] ->
-                        match lint_warnings with
-                        | _ :: _ ->
-                          Printf.fprintf oc "  <td style=\"background-color: orange;\">";
-                          with_link (fun oc ->
-                              List.iter (fun (num, _) ->
-                                  Printf.fprintf oc "%d " num;
-                                ) lint_warnings;
-                              Printf.fprintf oc "</td>\n")
-                        | [] ->
-                          Printf.fprintf oc "  <td style=\"background-color: green;\">";
-                          Printf.fprintf oc "</td>\n"
-                    end
-                  | StatusBuilderError ->
-                    Printf.fprintf oc "<td>\n";
-                    with_link (fun oc ->
-                        Printf.fprintf oc "Builder Error");
-                    Printf.fprintf oc "</td>\n";
-                  | StatusNonInstallable ->
-                    Printf.fprintf oc "<td style=\"background-color: red;\">\n";
-                    Printf.fprintf oc "<a href=\"http://ows.irill.org/latest/today/packages/%s-page.html#%s\">" package_name version_name;
-                    Printf.fprintf oc "Broken Deps";
-                    Printf.fprintf oc "</a>";
-                    Printf.fprintf oc "</td>\n"
-                  | StatusNonAvailable ->
-                    Printf.fprintf oc "  <td>\n";
-                    Printf.fprintf oc "</td>\n"
-                  | StatusSuccess (deps, build_content) ->
-                    Printf.fprintf oc "<td style=\"background-color: green;\">\n";
-                    with_link (fun oc -> Printf.fprintf oc "Ok");
-                    Printf.fprintf oc "</td>\n"
-                  | StatusFailure (deps, build_content, log_content) ->
-                    Printf.fprintf oc "<td style=\"background-color: orange;\">\n";
-                    with_link (fun oc -> Printf.fprintf oc "Fail");
-                    Printf.fprintf oc "</td>\n"
-                with Not_found ->
-                  Printf.fprintf oc "<td>Unknown</td>\n"
-              ) switches;
-            Printf.fprintf oc "</tr>\n";
-          end
-        ) !package_versions;
+    | Summary ->
 
-    ) !packages;
+      display_summary oc display
+  end;
 
   Printf.fprintf oc "</table>\n";
   Printf.fprintf oc
@@ -726,7 +951,9 @@ let import t =
                 let switches = List.map (fun filename ->
                     import_switch filename
                   ) switches in
-                print_report ~diff:true switches switch
+                let display = get_display switches in
+                print_report ~mode:Full display switch;
+                print_report ~mode:Diff display switch
               end;
         ) !switches;
 
@@ -735,7 +962,10 @@ let import t =
         | None -> files
         | Some lint -> lint :: files in
 
-      print_report ~diff:false switches "last";
+      let display = get_display switches in
+      print_report ~mode:Summary display "";
+      print_report ~mode:Full display "";
+      Printf.eprintf "All reports generated\n%!";
 
       List.iter (fun filename ->
           t.files <- StringSet.add filename t.files
