@@ -744,3 +744,19 @@ let import t =
       (* One of the files was not finished, we should restart in one minute.*)
       ()
   end
+
+let import t =
+  try
+    import t
+  with exn ->
+    Printf.eprintf
+      "Error %s while importing status, 1st time, waiting for 5s and restart.\n%!" (Printexc.to_string exn);
+    Unix.sleep 5;
+    try
+      import t
+    with exn ->
+      Printf.eprintf
+        "Error %s while importing status, 2nd time, waiting for 5s and restart.\n%!"
+        (Printexc.to_string exn);
+      Unix.sleep 5;
+      import t
