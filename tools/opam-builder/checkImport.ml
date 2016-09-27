@@ -742,7 +742,7 @@ let print_report ~mode display switch_name =
 .floatHolder { position: fixed; top: 0; left: 0; width: 100; display: none; }
 .lint-ok, .success, .lint-summary-full, .global-summary-full, .compiler-summary-full
   { background-color: green; }
-.lint-summary-warnings, .global-summary-almost-full, .compiler-summary-almost-full
+.lint-summary-warnings
   { background-color: #4f4; }
 .lint-warnings, .failure, .lint-summary-errors, .global-summary-partial, .compiler-summary-partial
   { background-color: orange; }
