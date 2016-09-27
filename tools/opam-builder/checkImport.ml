@@ -462,7 +462,7 @@ let display_package oc pd =
                 | StatusNonInstallable ->
                   Printf.fprintf oc "<td class=\"non-installable\">\n";
                   Printf.fprintf oc "<a href=\"http://ows.irill.org/latest/today/packages/%s-page.html#%s\">" pd.pd_name vd.vd_name;
-                  Printf.fprintf oc "Deps";
+                  Printf.fprintf oc "Uninstallable";
                   Printf.fprintf oc "</a>";
                   Printf.fprintf oc "</td>\n"
                 | StatusNonAvailable ->
@@ -740,15 +740,32 @@ let print_report ~mode display switch_name =
 .floatTr { background-color: #bbb; }
 .floatTr2 { background-color: #bbb; }
 .floatHolder { position: fixed; top: 0; left: 0; width: 100; display: none; }
+
+/* lint-summary-* classes are used for the lint information on the summary page
+   compiler-summary-* classes summarize the information of all versions of a package
+      for a fixed compiler version (the version columns of the summary page)
+   global-summary-* classes summarize the information of all versions of a package
+      for all compilers (the package name case on the summary page)
+*/
+
 .lint-ok, .success, .lint-summary-full, .global-summary-full, .compiler-summary-full
   { background-color: green; }
 .lint-summary-warnings
   { background-color: #4f4; }
-.lint-warnings, .failure, .lint-summary-errors, .global-summary-partial, .compiler-summary-partial
+.lint-warnings, .lint-summary-errors, .global-summary-partial, .compiler-summary-partial
   { background-color: orange; }
-.lint-errors, .non-installable, .global-summary-non-installable, .compiler-summary-non-installable
+
+/* global non-installability means that no version of the package is
+   installable for any compiler version; we treat this as a hard
+   error. On the contrary, non-installability of a single version or
+   all versions of a package under a fixed compiler version merely
+   means that its dependencies are unavailable (or in conflict), so we
+   do not treat it as a hard error but as an indirect form of
+   unaivalability. */
+
+.lint-errors, .failure, .global-summary-non-installable
   { background-color: red; }
-.non-available, .compiler-summary-non-available
+.non-available, .non-installable, .compiler-summary-non-available, .compiler-summary-non-installable
   { background-color: white; }
 </style>
 ";
