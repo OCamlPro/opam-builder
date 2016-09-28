@@ -431,10 +431,10 @@ let display_package oc pd =
             List.iter (fun sd ->
                 match sd.sd_status with
                 | StatusLint ([], []) ->
-                  Printf.fprintf oc "<td class='bg-green'/>\n";
+                  Printf.fprintf oc "<td class=\"lint-ok\"/>\n";
 
                 | StatusLint ([], lint_warnings) ->
-                  Printf.fprintf oc "<td class='bg-orange'\">";
+                  Printf.fprintf oc "<td class=\"lint-warnings\"\">";
                   display_link oc sd (fun oc ->
                       List.iter (fun (num, _) ->
                           Printf.fprintf oc "%d " num;
@@ -442,7 +442,7 @@ let display_package oc pd =
                   Printf.fprintf oc "</td>\n"
 
                 | StatusLint (lint_errors, lint_warnings) ->
-                  Printf.fprintf oc "<td class='bg-red'\">";
+                  Printf.fprintf oc "<td class=\"lint-errors\"\">";
                   display_link oc sd (fun oc ->
                       List.iter (fun (num, _) ->
                           Printf.fprintf oc "%d " num;
@@ -455,29 +455,29 @@ let display_package oc pd =
                   Printf.fprintf oc "</td>\n"
 
                 | StatusBuilderError ->
-                  Printf.fprintf oc "<td>\n";
+                  Printf.fprintf oc "<td class=\"builder-error\">\n";
                   display_link oc sd (fun oc ->
                       Printf.fprintf oc "Builder Error");
                   Printf.fprintf oc "</td>\n";
                 | StatusNonInstallable ->
-                  Printf.fprintf oc "<td class='bg-red'>\n";
+                  Printf.fprintf oc "<td class=\"non-installable\">\n";
                   Printf.fprintf oc "<a href=\"http://ows.irill.org/latest/today/packages/%s-page.html#%s\">" pd.pd_name vd.vd_name;
-                  Printf.fprintf oc "Deps";
+                  Printf.fprintf oc "Uninstallable";
                   Printf.fprintf oc "</a>";
                   Printf.fprintf oc "</td>\n"
                 | StatusNonAvailable ->
-                  Printf.fprintf oc "  <td>\n";
+                  Printf.fprintf oc "  <td class=\"non-available\">\n";
                   Printf.fprintf oc "</td>\n"
                 | StatusSuccess (deps, build_content) ->
-                  Printf.fprintf oc "<td class='bg-green'\">\n";
+                  Printf.fprintf oc "<td class=\"success\">\n";
                   display_link oc sd (fun oc -> Printf.fprintf oc "Ok");
                   Printf.fprintf oc "</td>\n"
                 | StatusFailure (deps, build_content, log_content) ->
-                  Printf.fprintf oc "<td class='bg-orange'\">\n";
+                  Printf.fprintf oc "<td class=\"failure\">\n";
                   display_link oc sd (fun oc -> Printf.fprintf oc "Fail");
                   Printf.fprintf oc "</td>\n"
                 | StatusUnknown ->
-                  Printf.fprintf oc "<td>Unknown</td>\n"
+                  Printf.fprintf oc "<td class=\"unknown\">Unknown</td>\n"
 
               ) vd.vd_statuses;
 
@@ -658,45 +658,50 @@ let display_summary oc display =
       done;
 
       Printf.fprintf oc "<tr>\n";
-      Printf.fprintf oc "<td class='bg-%s'><a href='report-full.html#%s'>%s</a> (%d versions)</td>\n"
-        (if !nins = ncds then "green" else
-         if !nins = !lint_cd then "red" else
-         if !nins + !no_avail = ncds then "greeny" else
-           "orange")
+      Printf.fprintf oc "<td class=\"global-summary-%s\"><a href='report-full.html#%s'>%s</a> (%d versions)</td>\n"
+        ((* lint results are counted as a compiler when available;
+            if the number of installable versions is
+            the number of lint results, then it means that no
+            actual compiler version supports the package *)
+         if !nins = !lint_cd then "non-installable" else
+         if !nins + !no_avail = ncds then "full" else
+           "partial")
         pd.pd_name
         pd.pd_name
         nversions;
       if !lint_cd > 0 then begin
         if !lint_errors > 0 then
-          Printf.fprintf oc "<td class='bg-orange'>%s</td>\n"
+          Printf.fprintf oc "<td class=\"lint-summary-errors\">%s</td>\n"
             (if !lint_warnings > 0 then
                Printf.sprintf "%d + %d" !lint_errors !lint_warnings
              else
                string_of_int !lint_errors)
         else
         if !lint_warnings > 0 then
-          Printf.fprintf oc "<td class='bg-greeny'>%d</td>\n" !lint_warnings
+          Printf.fprintf oc "<td class=\"lint-summary-warnings\">%d</td>\n" !lint_warnings
         else
-          Printf.fprintf oc "<td class='bg-green'></td>\n"
+          Printf.fprintf oc "<td class=\"lint-summary-full\"></td>\n"
       end;
       for i = !lint_cd to ncds -1 do
-        let (color, content) =
+        let (summary_class, content) =
           if ninstallable.(i) = nversions then
-            ("green", "")
+            ("full", "")
           else
           if ninstallable.(i) = ncandidates.(i) &&
              ncandidates.(i) > 0 then
-            ("greeny", string_of_int ncandidates.(i))
+            ("full", string_of_int ncandidates.(i))
           else
           if ncandidates.(i) = 0 then
-            ("white", "")
+            ("non-available", "")
           else
           if ninstallable.(i) = 0 then
-            ("red", Printf.sprintf "%d/%d" ninstallable.(i) ncandidates.(i))
+            ("non-installable",
+             Printf.sprintf "%d/%d" ninstallable.(i) ncandidates.(i))
           else
-            ("orange", Printf.sprintf "%d/%d" ninstallable.(i) ncandidates.(i))
+            ("partial",
+             Printf.sprintf "%d/%d" ninstallable.(i) ncandidates.(i))
         in
-        Printf.fprintf oc "<td class='bg-%s'>%s</td>\n" color content
+        Printf.fprintf oc "<td class=\"compiler-summary-%s\">%s</td>\n" summary_class content
       done;
       Printf.fprintf oc "</tr>\n";
 
@@ -735,11 +740,33 @@ let print_report ~mode display switch_name =
 .floatTr { background-color: #bbb; }
 .floatTr2 { background-color: #bbb; }
 .floatHolder { position: fixed; top: 0; left: 0; width: 100; display: none; }
-.bg-green { background-color: green; }
-.bg-greeny { background-color: #4f4; }
-.bg-orange { background-color: orange; }
-.bg-red { background-color: red; }
-.bg-white { background-color: white; }
+
+/* lint-summary-* classes are used for the lint information on the summary page
+   compiler-summary-* classes summarize the information of all versions of a package
+      for a fixed compiler version (the version columns of the summary page)
+   global-summary-* classes summarize the information of all versions of a package
+      for all compilers (the package name case on the summary page)
+*/
+
+.lint-ok, .success, .lint-summary-full, .global-summary-full, .compiler-summary-full
+  { background-color: green; }
+.lint-summary-warnings
+  { background-color: #4f4; }
+.lint-warnings, .lint-summary-errors, .global-summary-partial, .compiler-summary-partial
+  { background-color: orange; }
+
+/* global non-installability means that no version of the package is
+   installable for any compiler version; we treat this as a hard
+   error. On the contrary, non-installability of a single version or
+   all versions of a package under a fixed compiler version merely
+   means that its dependencies are unavailable (or in conflict), so we
+   do not treat it as a hard error but as an indirect form of
+   unaivalability. */
+
+.lint-errors, .failure, .global-summary-non-installable
+  { background-color: red; }
+.non-available, .non-installable, .compiler-summary-non-available, .compiler-summary-non-installable
+  { background-color: white; }
 </style>
 ";
   Printf.fprintf oc "<input id=\"search\" class=\"search-query\" type=\"text\" placeholder=\"Search packages\"/>

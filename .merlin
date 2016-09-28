@@ -1,0 +1,4 @@
+S tools
+S libs
+B _obuild/**
+PKG jsonm ocplib-compat ocplib-file
