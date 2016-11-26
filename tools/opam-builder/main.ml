@@ -42,6 +42,7 @@ let arg_lint_only = ref false
 let opam_pull = ref true
 let arg_build = ref true
 let arg_opam2 = ref false
+let arg_gc = ref false
 
 let last_commit_cmd = "git rev-parse --short HEAD > last-commit.txt"
 
@@ -200,6 +201,7 @@ let _ =
     "--no-build", Arg.Clear arg_build, " Do not build, generate the report.";
     "--import", Arg.Set arg_import, " Import from directories";
     "--to-opam2", Arg.Set arg_opam2, " Translate repo to OPAM 2.0";
+    "--gc", Arg.Set arg_gc, " Clean switch archives";
   ] in
   let arg_anon s = switches :=  s :: !switches in
   let arg_usage = "opam-builder [OPTIONS] : backup all archives of an opam-repository" in
@@ -208,6 +210,10 @@ let _ =
   let dirs = {
     repo_dir; cache_dir; opam_dir; current_dir; report_dir;
   } in
+
+  if !arg_gc then
+    CheckGC.clean cache_dir !switches
+  else
   if not !arg_import
       && (not (Sys.file_exists "packages") || not (Sys.file_exists ".git"))
   then begin

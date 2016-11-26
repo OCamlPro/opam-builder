@@ -33,6 +33,7 @@ type status = {
 type version = {
   version_package : package;
   version_name : string;
+  (* The checksum of the content of the directory NAME.VERSION/ *)
   version_checksum : CheckDigest.t;
   mutable version_visited : int;
   mutable version_deps : package StringMap.t;
@@ -61,7 +62,11 @@ type commit = {
   check_date : string;
   commit_name : string;
   switches : string array;
+
+  (* map from NAME.VERSION to version *)
   mutable versions : version StringMap.t;
+
+  (* map from NAME to package *)
   mutable packages : package StringMap.t;
 }
 

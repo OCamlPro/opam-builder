@@ -33,10 +33,11 @@ val check_commit :
   string array -> (* switches *)
   CheckTypes.V.commit
 
-(* check that all the files have been generated, calling a function to
-   generate them if needed. A checksum is attached to the first file
-   (in a file FILE ^ ".checksum"), and can cause the regeneration if
-   changed. *)
+(* [checksum_rule files new_checksum f] checks that all the [files]
+   have been generated, calling a function to generate them if
+   needed. A checksum is attached to the first file (in a file FILE ^
+   ".checksum"), and can cause the regeneration if [new_checksum] is
+   different. *)
 val checksum_rule :
   string list ->
   CheckDigest.t ->
