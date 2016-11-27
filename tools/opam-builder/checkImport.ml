@@ -500,6 +500,7 @@ let get_display switches =
               p
           in
           List.iter (fun version_name ->
+              print_endline version_name;
               if not (StringSet.mem version_name !p) then
                 p := StringSet.add version_name !p
             ) package_versions
@@ -547,7 +548,16 @@ let get_display switches =
             ) switches;
           vd.vd_statuses <- List.rev vd.vd_statuses
         ) !package_versions;
-      pd.pd_versions <- List.rev pd.pd_versions
+
+      (* sort the packages in the display list by version number; we
+         use CopamDebian.compare which is specifically designed for
+         version numbers, and thus work better than String.compare on
+         numeric components of the package.version name. For example, we want
+           2.6.2 to be listed before 2.10.1,
+         which would not be the case if we just used String.compare. *)
+      let compare_versions vd1 vd2 =
+        CopamDebian.compare vd1.vd_name vd2.vd_name in
+      pd.pd_versions <- List.sort compare_versions pd.pd_versions
 
     ) !packages;
 
