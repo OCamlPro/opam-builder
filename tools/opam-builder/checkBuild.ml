@@ -171,7 +171,11 @@ let check_build_and_install_version only_to_clean st c sw v =
 
         if only_to_clean then
           List.iter (fun file ->
-              try Sys.remove file with _ -> ()
+              let backup_file = file ^ ".bak" in
+              if Sys.file_exists backup_file &&
+                Sys.file_exists file then
+              (try Sys.remove backup_file with _ -> ());
+              try Sys.rename file backup_file with _ -> ()
             ) [ result_file; log_file; build_file]
         else
           match !failures with

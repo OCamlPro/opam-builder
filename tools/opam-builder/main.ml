@@ -184,6 +184,7 @@ let repo_dir = "."
 let opam_dir = Filename.concat current_dir ".opam"
 let report_dir = Filename.concat current_dir "reports"
 let _ =
+  Printexc.record_backtrace true;
   let switches = ref [] in
   let arg_list = Arg.align [
     "--no-pull",

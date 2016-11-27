@@ -42,9 +42,11 @@ let clean cache_dir switches =
 
     let need_archive version_name hash =
       let package_name, _ = OcpString.cut_at version_name '.' in
-      let file_base = Printf.sprintf "%s-%s" package_name switch in
-      let filename = Filename.concat package_name
-        (Filename.concat version_name file_base) in
+      let file_base = Printf.sprintf "%s-%s" hash switch in
+      let filename =
+        Filename.concat cache_dir 
+        (Filename.concat package_name
+                         (Filename.concat version_name file_base)) in
       try
         let a = Hashtbl.find archives filename in
         a.used <- a.used + 1
@@ -90,13 +92,14 @@ let clean cache_dir switches =
           read_build_file version_dir file
         else
           if Filename.check_suffix file "-build.tar.gz" then
-            register_archive version_dir (Filename.chop_suffix file ".tar.gz")
+            register_archive version_dir (Filename.chop_suffix file "-build.tar.gz")
       ) files
     in
 
     let packages = Sys.readdir cache_dir in
     Array.iter (fun package_name ->
       let package_dir = Filename.concat cache_dir package_name in
+      if Sys.is_directory package_dir then
       let versions = Sys.readdir package_dir in
       Array.iter (fun version_name ->
         let version_dir = Filename.concat package_dir version_name in
@@ -113,7 +116,7 @@ let clean cache_dir switches =
     let nremoved = ref 0 in
     Hashtbl.iter (fun _ a ->
       let base_archive = a.filename in
-      let archive = base_archive ^ ".tar.gz" in
+      let archive = base_archive ^ "-build.tar.gz" in
       let mtime =
         try
           (Unix.stat archive).Unix.st_mtime
@@ -129,7 +132,21 @@ let clean cache_dir switches =
         incr nused;
       end else begin
         incr nunused;
-        if ndays > 7 then incr nremoved;
+        if ndays > 7 then begin
+          incr nremoved;
+          List.iter (fun ext ->
+            let filename = a.filename ^ ext in
+            Printf.eprintf " Removing %s\n%!" filename;
+             try Sys.remove filename with _ -> ()
+          ) [
+"-build.depends";
+"-build.snap";
+"-build.tar.gz";
+"-install.depends";
+"-install.snap";
+"-install.tar.gz";
+          ]
+        end
       end
     ) archives;
     Printf.eprintf "%d used archives\n%!" !nused;
