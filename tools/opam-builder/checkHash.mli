@@ -24,7 +24,7 @@
 val hash_directory : string -> CheckDigest.t
 
 (* Updates the [package_local_checksum] field of [package] using
-   the checksums of its versions *)
+   the checksums of its versions [concat(VERSION ^ CONTENT)] *)
 val hash_package_content : CheckTypes.V.package -> unit
 
 (* Updates the [package_transitive_checksum] field of [package] using

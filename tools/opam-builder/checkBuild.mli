@@ -38,3 +38,8 @@ val report :
 val export :
   CheckTypes.state ->
   CheckTypes.V.commit -> CheckGraph.stats array -> unit
+
+
+(* Misc functions *)
+val chdir : string -> unit
+val ignore_bool : bool -> unit

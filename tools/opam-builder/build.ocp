@@ -35,10 +35,22 @@ begin
     "checkHash.ml";
     "checkHtml.ml";
     "checkGraph.ml";
+
+    (* Read a commit on disk and check what has changed, no action *)
     "checkUpdate.ml";
+
+    (* Lint all packages that have changed *)
     "checkLint.ml";
+
+    (* Check installability *)
     "checkCudf.ml";
+
+    "checkGC.ml";
+
+    (* check buildability *)
     "checkBuild.ml";
+
+    (* Import generated files and create web pages *)
     "checkImport.ml";
   ];
 

@@ -41,6 +41,8 @@ let arg_lint = ref false
 let arg_lint_only = ref false
 let opam_pull = ref true
 let arg_build = ref true
+let arg_opam2 = ref false
+let arg_gc = ref false
 
 let last_commit_cmd = "git rev-parse --short HEAD > last-commit.txt"
 
@@ -198,6 +200,8 @@ let _ =
     ), " Fix using lint information";
     "--no-build", Arg.Clear arg_build, " Do not build, generate the report.";
     "--import", Arg.Set arg_import, " Import from directories";
+    "--to-opam2", Arg.Set arg_opam2, " Translate repo to OPAM 2.0";
+    "--gc", Arg.Set arg_gc, " Clean switch archives";
   ] in
   let arg_anon s = switches :=  s :: !switches in
   let arg_usage = "opam-builder [OPTIONS] : backup all archives of an opam-repository" in
@@ -206,12 +210,27 @@ let _ =
   let dirs = {
     repo_dir; cache_dir; opam_dir; current_dir; report_dir;
   } in
+
+  if !arg_gc then
+    CheckGC.clean cache_dir !switches
+  else
   if not !arg_import
       && (not (Sys.file_exists "packages") || not (Sys.file_exists ".git"))
   then begin
     Printf.eprintf "opam-archive should be run at the root of an opam-repository clone.\n%!";
     exit 2
   end;
+
+  let for_each_new_commit dirs f =
+    if !arg_opam2 then begin
+      Printf.eprintf "Upgrading repository to 2.0...\n%!";
+      CheckBuild.chdir dirs.repo_dir;
+      CheckBuild.ignore_bool (command "opam-admin upgrade-format");
+      CheckBuild.chdir dirs.current_dir;
+      Printf.eprintf "Upgrading repository to 2.0...done\n%!"
+
+    end
+  in
 
   List.iter (fun dir ->
     if not (Sys.file_exists dir) then Unix.mkdir dir 0o755
@@ -220,7 +239,7 @@ let _ =
   if !arg_lint_only then begin
 
     let lint = true in
-    for_each_new_commit (fun commit ->
+    for_each_new_commit dirs (fun commit ->
       let c = CheckUpdate.check_commit ~lint ~commit dirs [||] in
       let c =
         if !auto_fix then begin
@@ -247,7 +266,7 @@ let _ =
 
     let st = CheckBuild.init dirs !switches in
 
-    for_each_new_commit (fun commit ->
+    for_each_new_commit dirs (fun commit ->
 
         if command (CopamInstall.opam_cmd st.root "update") then begin
 
