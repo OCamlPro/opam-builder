@@ -101,12 +101,19 @@ let parse_solution cudf solution_file =
   with Exit -> None
 
 let call_aspcud cudf nv =
-  let (package, version) = Hashtbl.find cudf.opam2cudf nv in
   let cudf_file = Filename.temp_file nv ".cudf" in
   let solution_file = Filename.temp_file nv ".solution" in
   let oc = open_out cudf_file in
   output_string oc cudf.cudf_lines;
-  Printf.fprintf oc "install: %s = %s\n" package version;
+  begin
+    try
+      let (package, version) = Hashtbl.find cudf.opam2cudf nv in
+      Printf.fprintf oc "install: %s = %s\n" package version;
+    with
+    | Not_found ->
+      (* Probably, no version was specified *)
+      Printf.fprintf oc "install: %s\n" nv;
+  end;
   close_out oc;
   let exitcode = Sys.command (solver_cmd cudf_file solution_file) in
   if exitcode <> 0 then begin
