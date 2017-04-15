@@ -19,6 +19,7 @@
 (*  SOFTWARE.                                                             *)
 (**************************************************************************)
 
+let opam2_criteria = "-count(removed),-notuptodate(request),-sum(request,version-lag),-count(down),-notuptodate(changed),-count(changed),-notuptodate(solution),-sum(solution,version-lag)"
 
 
 let solver_cmd cudf_file solution_file =
@@ -30,12 +31,17 @@ exception SolverFailed
 exception CorruptedSolutionFile
 
 type t = {
+    cudf_content : string;
   cudf_lines : string;
   cudf2opam : (string * string, string * string) Hashtbl.t;
   opam2cudf : (string, string * string) Hashtbl.t;
 }
 
+let write_file filename t =
+  FileString.write_file filename t.cudf_content
+
 let parse_cudf cudf_file =
+  let cudf_content = FileString.read_file cudf_file in
   let last_package = ref None in
   let last_version = ref None in
   let last_name = ref None in
@@ -72,7 +78,7 @@ let parse_cudf cudf_file =
     raise CorruptedCudfFile
   with Exit ->
     let cudf_lines = Buffer.contents b in
-    { cudf_lines; cudf2opam; opam2cudf }
+    { cudf_lines; cudf2opam; opam2cudf; cudf_content }
 
 let parse_solution cudf solution_file =
   let packages = ref [] in
@@ -115,12 +121,17 @@ let call_aspcud cudf nv =
       Printf.fprintf oc "install: %s\n" nv;
   end;
   close_out oc;
-  let exitcode = Sys.command (solver_cmd cudf_file solution_file) in
+  let cmd = solver_cmd cudf_file solution_file in
+  let exitcode = Sys.command cmd in
   if exitcode <> 0 then begin
-    Printf.eprintf "Error: aspcud returned status %d\n%!" exitcode;
+      Printf.eprintf "Error: aspcud returned status %d:\n%!" exitcode;
+      Printf.eprintf "   %s\n%!" cmd;
     raise SolverFailed
   end;
   let solution = parse_solution cudf solution_file in
   (try Sys.remove solution_file with _ -> ());
   (try Sys.remove cudf_file with _ -> ());
   solution
+
+let cudf2opam t name version =
+  Hashtbl.find t.cudf2opam (name, string_of_int version)

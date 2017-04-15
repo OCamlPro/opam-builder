@@ -1,0 +1,34 @@
+comp += [ "-g" ]
+link += [ "-g" ]
+
+begin library "opam-weather-lib"
+  files = [
+    "weatherTypes.ml"
+    "weatherMisc.ml"
+    "weatherDiag.ml"
+    "weatherReasons.ml"
+    "weatherConfig.ml"
+  ]
+  requires = [ "dose3.common" "dose3.algo" "unix" "dose3.debian" ]
+end
+
+begin program "opam-weather-dose"
+  files = [ "weatherDose.ml" ]
+  requires = [ "opam-weather-lib" ]
+end
+
+
+begin program "opam-weather-report"
+  files = [ "weatherReport.ml" ]
+  requires = [ "dose3.debian" "opam-weather-lib" ]
+end
+
+begin program "opam-weather-history"
+  files = [ "weatherHistory.ml" ]
+  requires = [ "opam-weather-lib" ]
+end
+
+begin program "opam-weather-date"
+  files = [ "weatherDate.ml" ]
+  requires = [ "opam-weather-lib" "unix" ]
+end

@@ -126,7 +126,11 @@ let action_on_commit st commit =
   let dirs = st.dirs in
 
   let switches = Array.map (fun sw ->
-    sw.sw_cudf := None; (* universe must have changed for every switch *)
+                     (* universe must have changed for every switch *)
+                     sw.sw_cudf.cudf_backup := None;
+                     Hashtbl.clear sw.sw_cudf.solver_cache;
+                     sw.sw_cudf.known_universe <- None;
+
     sw.sw_name) st.sws in
 
   let c = CheckUpdate.check_commit ~lint ~commit dirs switches in
@@ -208,8 +212,10 @@ let _ =
   let arg_usage = "opam-builder [OPTIONS] : backup all archives of an opam-repository" in
   Arg.parse arg_list arg_anon arg_usage;
 
+  let repo_subdir = if !arg_opam2 then "2.0" else "." in
+
   let dirs = {
-    repo_dir; cache_dir; opam_dir; current_dir; report_dir;
+    repo_dir; cache_dir; opam_dir; current_dir; report_dir; repo_subdir;
   } in
 
   if !arg_gc then
@@ -218,24 +224,31 @@ let _ =
   if not !arg_import
       && (not (Sys.file_exists "packages") || not (Sys.file_exists ".git"))
   then begin
-    Printf.eprintf "opam-archive should be run at the root of an opam-repository clone.\n%!";
+    Printf.eprintf "opam-builder should be run at the root of an opam-repository clone.\n%!";
     exit 2
   end;
 
-  let for_each_new_commit dirs f =
+  let maybe_upgrade_to_opam2 dirs =
     if !arg_opam2 then begin
       Printf.eprintf "Upgrading repository to 2.0...\n%!";
       CheckBuild.chdir dirs.repo_dir;
-      CheckBuild.ignore_bool (command "opam-admin upgrade-format");
+      CheckBuild.ignore_bool (Printf.kprintf command "opam.dev admin upgrade -m %s" dirs.repo_subdir);
       CheckBuild.chdir dirs.current_dir;
       Printf.eprintf "Upgrading repository to 2.0...done\n%!"
-
     end
+  in
+
+  let for_each_new_commit dirs f =
+    for_each_new_commit (fun commit ->
+        maybe_upgrade_to_opam2 dirs;
+        f commit
+      )
   in
 
   List.iter (fun dir ->
     if not (Sys.file_exists dir) then Unix.mkdir dir 0o755
   ) [ cache_dir; report_dir ];
+
 
   if !arg_lint_only then begin
 
@@ -263,10 +276,17 @@ let _ =
       CheckImport.import state;
       Unix.sleep 60;
     done
-  end else begin
+    end else begin
 
+      (* First of all, upgrade the repo to 2.0, in case we need opam
+      to be installed first. *)
+      maybe_upgrade_to_opam2 dirs;
+
+      (* Check that opam is locally installed in .opam with the
+         current switch *)
     let st = CheckBuild.init dirs !switches in
 
+    (* Iter on commits *)
     for_each_new_commit dirs (fun commit ->
 
         if command (CopamInstall.opam_cmd st.root "update") then begin

@@ -131,9 +131,9 @@ AC_CHECK_OCAML_PKG(ocplib-file)
 if test "$OCAML_PKG_ocplib_file" = "no"; then
    AC_MSG_ERROR([Please install OCaml package 'ocplib-file'.])
 fi
-OPAM_REPO=/home/lefessan/WindowsSharedFolder/opam-repository-with-archives
-OPAM_REPO_OFFICIAL_REMOTE=ocaml
-OPAM_REPO_FORK_REMOTE=origin
+OPAM_REPO=
+OPAM_REPO_OFFICIAL_REMOTE=
+OPAM_REPO_FORK_REMOTE=
 DOWNLOAD_URL_PREFIX=http://github.com/OCamlPro/opam-builder/archive/
 
 ###############################################################
@@ -141,11 +141,6 @@ DOWNLOAD_URL_PREFIX=http://github.com/OCamlPro/opam-builder/archive/
 ## From autoconf.ac:                                          #
 ##                                                            #
 ###############################################################
-
-
-# This file will be inserted inside autoconf/configure.ac by ocp-autoconf
-# If you create variables, do not forget to add them in ocp-autoconf.config
-# in the 'extra_config_vars' and 'extra_bool_vars' options.
 
 
 ###############################################################
@@ -182,7 +177,7 @@ AC_SUBST(OCAMLDOC)
 AC_SUBST(OCAMLLIB)
 AC_SUBST(OCAMLBIN)
 AC_SUBST(OCAML_USE_BINANNOT)
-AC_CONFIG_FILES(Makefile.config config.ocpgen ocaml-config.h)
+AC_CONFIG_FILES(Makefile.config config.ocpgen config.ocp2gen ocaml-config.h)
 AC_OUTPUT
 
 echo

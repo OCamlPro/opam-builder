@@ -74,18 +74,25 @@ end
 
 module V = V1
 
+type cudf = {
+    mutable known_universe : Cudf.universe option;
+    solver_cache : (string, Algo.Diagnostic.reason list) Hashtbl.t;
+    cudf_backup : CopamCudf.t option ref;
+  }
+
 type switch = {
   sw_name : string;
   sw_dir : string;
   sw_snapshot : CheckSnapshot.t;
   sw_backup : MemoryBackup.t;
-  sw_cudf : CopamCudf.t option ref;
+  sw_cudf : cudf;
 }
 
 type directories = {
   opam_dir : string;
   cache_dir : string;
   repo_dir : string;
+  repo_subdir : string;
   report_dir : string;
   current_dir : string;
 }

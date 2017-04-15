@@ -26,8 +26,10 @@ begin library "ocplib-copam"
         "copamUrlFile.ml"
 
         "copamTypes.ml"
+        (*
         "copamLexer.mll"
         "copamParser.mly"
+         *)
         "copamOpamFile.ml"
 
         "copamCudf.ml";
@@ -38,5 +40,8 @@ begin library "ocplib-copam"
 
         "copamDebian.ml"
     ]
-    requires = [ "ocplib-system" string_compat "ocplib-json" ]
+              requires = [ "ocplib-system" string_compat "ocplib-json"
+                                           "opam-file-format"
+                         ]
+
 end

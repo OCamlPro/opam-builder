@@ -82,22 +82,88 @@ let check_installability state checksum version_dir version_name =
 
   Array.iter (fun sw ->
 
-    let solution_prefix = solution_prefix version_dir version_name sw.sw_name in
-    let deps_file = solution_prefix ^ ".deps" in
-    let log_file = solution_prefix ^ ".log" in
+      let solution_prefix = solution_prefix version_dir version_name sw.sw_name in
+      let deps_file = solution_prefix ^ ".deps" in
+      let log_file = solution_prefix ^ ".log" in
 
-    CheckUpdate.checksum_rule [deps_file; log_file] checksum (fun () ->
+      CheckUpdate.checksum_rule
+        [deps_file; log_file]
+        checksum (fun () ->
+          Printf.eprintf "  checking installability of %s on %s\n%!" version_name sw.sw_name;
 
-      Printf.eprintf "  checking installability of %s on %s\n%!" version_name sw.sw_name;
+          try
+            let universe =
+              match sw.sw_cudf.known_universe with
+              | Some universe -> universe
+              | None ->
+                 match ! (sw.sw_cudf.cudf_backup) with
+                 | None -> raise Not_found
+                 | Some cudf ->
+                    let open WeatherTypes in
+                    Printf.eprintf "  checking whole universe with DOSE...\n%!";
 
-      let status, log_content =
-        CopamInstall.check_install
-          state.root sw.sw_cudf ~switch:sw.sw_name version_name in
-      let deps_content = deps_of_status status in
-      FileString.write_file log_file log_content;
-      FileString.write_file deps_file deps_content;
-    )
-  ) state.sws;
+                    let cudf_file = Filename.temp_file "cudf" ".cudf" in
+                    CopamCudf.write_file cudf_file cudf;
+                    let universe = WeatherDiag.load_cudf_universe cudf_file in
+                    sw.sw_cudf.known_universe <- Some universe;
+                    let callback diag =
+                      let open Algo.Diagnostic in
+                      let package = match diag.request with
+                        | [p] -> p
+                        | _ -> assert false
+                      in
+                      let name,version =
+                        CopamCudf.cudf2opam cudf
+                                            package.Cudf.package
+                                            package.Cudf.version
+                      in
+                      let version_name = name ^ "." ^ version in
+                      let package_info = match diag.result with
+                        | Success _ -> ()
+                        | Failure f ->
+                           let reasons = f () in
+                           Hashtbl.add sw.sw_cudf.solver_cache version_name reasons
+                      in
+                      ()
+                    in
+
+                    let nfail =
+                      Algo.Depsolver.univcheck ~global_constraints:[] ~callback universe
+                    in
+                    (* The unavailable packages must be absent to perform
+     the checks, but we re-add dummy versions now for easier lookups
+     during reports generation. *)
+                    WeatherDiag.add_unav_packages universe cudf_file;
+                    universe
+            in
+            let reasons = Hashtbl.find sw.sw_cudf.solver_cache version_name in
+            Printf.eprintf "  %s is in cache, not installable...\n%!"
+                           version_name;
+            let reasons = WeatherReasons.string_of_reasons
+                            (fun name -> name)
+                            universe reasons in
+            FileString.write_file log_file reasons;
+            FileString.write_file deps_file "no-solution";
+          with Not_found ->
+            Printf.eprintf "  %s not in cache, should be installable...\n%!"
+                           version_name;
+
+            let status, log_content =
+              CopamInstall.check_install
+                state.root sw.sw_cudf.cudf_backup ~switch:sw.sw_name version_name in
+            let deps_content = deps_of_status status in
+            FileString.write_file log_file log_content;
+            FileString.write_file deps_file deps_content;
+            Printf.eprintf "     %s: after check, %s\n%!"
+                           version_name
+                           (match status with
+                            | NotAvailable -> "NotAvailable"
+                            | Installable _ -> "Installable"
+                            | ExternalError -> "ExternalError"
+                            | NotInstallable -> "NotInstallable"
+                           )
+        )
+    ) state.sws;
   ()
 
 let status_of_files version_dir basename switch =

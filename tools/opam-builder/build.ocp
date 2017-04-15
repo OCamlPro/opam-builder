@@ -58,7 +58,9 @@ begin
     "ocplib-system";
     "ocplib-copam";
     string_compat;
-    "ocplib-json" ]
+    "ocplib-json";
+    "opam-weather-lib";
+    ]
 end
 
 begin

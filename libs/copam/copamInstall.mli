@@ -30,6 +30,7 @@ type status =
 | Installable of (string * string) list (* (name * version) list *)
 
 val init :
+  repo_subdir: string ->
   ?opam: string -> (* opam command *)
   string -> (* rootdir *)
   string list -> (* switch list *)

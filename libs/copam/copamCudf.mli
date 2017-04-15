@@ -29,3 +29,5 @@ type t
 
 val parse_cudf : string -> t
 val call_aspcud : t -> string -> (string * string) list option
+val write_file : string -> t -> unit
+val cudf2opam : t -> string -> int -> string * string

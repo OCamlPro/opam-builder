@@ -311,7 +311,9 @@ let init dirs switches =
       | _ -> List.sort compare switches
     in
 
-    let root = CopamInstall.init dirs.opam_dir switches in
+    let root = CopamInstall.init
+                 ~repo_subdir: dirs.repo_subdir
+                 dirs.opam_dir switches in
 
     List.iter (fun switch ->
       let switch_archive = switch_archive dirs.cache_dir switch in
@@ -345,7 +347,11 @@ let init dirs switches =
         let sw_backup = MemoryBackup.save sw_dir opam_files_to_backup in
 
 
-        let sw_cudf = ref None in
+        let sw_cudf = {
+            cudf_backup = ref None;
+            known_universe = None;
+            solver_cache = Hashtbl.create 1111;
+          } in
         { sw_snapshot; sw_name; sw_dir; sw_cudf; sw_backup }
       ) switches
     in
