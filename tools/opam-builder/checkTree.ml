@@ -53,15 +53,17 @@ exception InvalidFile
 
 end
 
+open CheckTypes.OP
+
 let cache_dir_basename = "builder.cache"
 let reports_dir_basename = "builder.reports"
 let switch_file_basename = "builder.switch"
 
 let current_dir = Sys.getcwd ()
 
-let reports_dir_fullname = Filename.concat current_dir reports_dir_basename
-let cache_dir_fullname = Filename.concat current_dir cache_dir_basename
-let switch_file_fullname = Filename.concat current_dir switch_file_basename
+let reports_dir_fullname = current_dir // reports_dir_basename
+let cache_dir_fullname = current_dir // cache_dir_basename
+let switch_file_fullname = current_dir // switch_file_basename
 
 let fatal fmt =
   Printf.kprintf (fun msg ->

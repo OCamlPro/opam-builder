@@ -19,6 +19,7 @@
 (*  SOFTWARE.                                                             *)
 (**************************************************************************)
 
+open CheckTypes.OP
 
 let action switches =
   List.iter (fun switch ->
@@ -30,7 +31,7 @@ let action switches =
     CheckTree.fatal "no git repository %S" "opam-repository/.git";
 
   Unix.putenv "OPAM_DOWNLOAD_CACHE"
-              (Filename.concat CheckTree.current_dir "opam-download-cache");
+              (CheckTree.current_dir // "opam-download-cache");
 
   List.iter (fun switch ->
       if not (Printf.kprintf CheckBuild.command
@@ -42,9 +43,7 @@ let action switches =
 
       if not (Printf.kprintf CheckBuild.command
                              "git remote add ocaml %s"
-                             (Filename.concat
-                                CheckTree.current_dir
-                                "opam-repository")
+                             (CheckTree.current_dir // "opam-repository")
              )
       then
         CheckTree.fatal "cannot update remote of repository in %S" switch;
@@ -54,9 +53,7 @@ let action switches =
 
       CheckBuild.upgrade_opam2 "2.0";
 
-      let opam_root =
-        Filename.concat
-          (Filename.concat CheckTree.current_dir switch) ".opam" in
+      let opam_root = CheckTree.current_dir // switch // ".opam" in
       let (_ : CopamInstall.t) = CopamInstall.init
                                    ~repo_subdir:"2.0"
                                    opam_root switch

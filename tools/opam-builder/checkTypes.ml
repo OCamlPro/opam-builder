@@ -32,22 +32,34 @@ type version = {
   version_package : package;
   version_name : string;
   (* The checksum of the content of the directory NAME.VERSION/ *)
-  version_checksum : CheckDigest.t;
+  version_opam_dir : string;
+  version_cache_dir : string;
+
+  version_opam_checksum : CheckDigest.t;
+  version_dir_checksum : CheckDigest.t;
   mutable version_visited : int;
   mutable version_deps : package StringMap.t;
-  mutable version_status : status option;
   mutable version_lint : version_lint option;
+
+  (* only available after weather *)
+  mutable version_status : status option;
+
+  (* only available after build *)
+  mutable version_result : bool option;
+  mutable version_build : string option;
+  mutable version_log : string option;
 }
 
 and package = {
   package_name : string;
-  mutable package_local_checksum : CheckDigest.t option;
-  mutable package_transitive_checksum :
+  mutable package_opam_local_checksum : CheckDigest.t option;
+  mutable package_opam_closure_checksum :
     (CheckDigest.t * package StringMap.t) option;
   mutable package_visited : int;
   mutable package_versions : version StringMap.t;
   mutable package_deps : package StringMap.t;
   mutable package_status : status option;
+  package_cache_dir : string;
 }
 
 and version_lint = {
@@ -58,6 +70,7 @@ and version_lint = {
 
 type commit = {
   check_date : string;
+  timestamp_date : string;
   commit_name : string;
   switch : string;
 

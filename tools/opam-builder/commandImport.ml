@@ -31,18 +31,13 @@ open CheckTypes
 open CheckTypes.OP
 
 let args =
-  CommandBuild.args @
     [
 
     ]
 
-let generate_export_file () =
-
-  let (st, c, stats) = CommandBuild.build_packages () in
-
-  CheckExport.export st c stats;
-
-  ()
-
-let action args =
-  ignore (generate_export_file () : unit)
+let action dirs =
+  let state = CheckImport.init dirs in
+  while true do
+    CheckImport.import state;
+    Unix.sleep 60;
+  done

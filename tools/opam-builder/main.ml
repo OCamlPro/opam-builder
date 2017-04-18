@@ -32,6 +32,7 @@
 *)
 
 open CheckTypes
+open CheckTypes.OP
 open StringCompat
 open CopamInstall
 
@@ -136,7 +137,7 @@ let action_on_commit st commit =
 
 
   StringMap.iter (fun package_name p ->
-      match p.package_transitive_checksum with
+      match p.package_opam_closure_checksum with
       | None -> assert false
       | Some (checksum, closure) ->
 
@@ -305,8 +306,7 @@ let _ =
               if command (CopamInstall.opam_cmd st.root "update") then begin
 
                   let c = action_on_commit st commit in
-                  let commit_file = Filename.concat report_dir
-                                                    (commit ^ ".check") in
+                  let commit_file = report_dir // (commit ^ ".check") in
 
                   let stats = CheckStats.compute_stats st c in
                   CheckIO.save commit_file (c, stats);

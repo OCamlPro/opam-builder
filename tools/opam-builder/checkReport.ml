@@ -22,13 +22,14 @@
 
 
 open CheckTypes
+open CheckTypes.OP
 open StringCompat
 open CopamInstall
 
 let report st c stats =
   let sw = st.sw in
   let dirs = st.dirs in
-  let report_file = Filename.concat dirs.report_dir
+  let report_file = dirs.report_dir //
       (Printf.sprintf "%s-build-%s.html"
          c.commit_name sw.sw_name) in
 
@@ -45,11 +46,9 @@ let report st c stats =
 
   StringMap.iter (fun package_name p ->
       incr npackages;
-      let package_dir = Filename.concat dirs.cache_dir p.package_name in
       StringMap.iter (fun version_name v ->
           incr nversions;
-          let version_dir = Filename.concat package_dir v.version_name in
-          let status = CheckCudf.solution_deps version_dir version_name sw.sw_name in
+          let status = CheckCudf.solution_deps v.version_cache_dir version_name sw.sw_name in
           begin
             match status with
             | NotInstallable -> incr nbroken_versions
@@ -57,7 +56,7 @@ let report st c stats =
             | ExternalError -> incr nerror_versions
             | Installable deps ->
               let install_prefix =
-                Filename.concat version_dir
+                v.version_cache_dir //
                   (Printf.sprintf "%s-%s-install" v.version_name sw.sw_name) in
               let _build_file = install_prefix ^ ".build" in
               let _log_file = install_prefix ^ ".log" in
@@ -99,7 +98,6 @@ let report st c stats =
   Printf.fprintf oc "</tr>\n";
 
   StringMap.iter (fun package_name p ->
-      let package_dir = Filename.concat dirs.cache_dir p.package_name in
 
       Printf.fprintf oc "<tr>\n";
       Printf.fprintf oc "  <td>%s</td>\n" package_name;
@@ -111,8 +109,7 @@ let report st c stats =
           Printf.fprintf oc "  <td><a href=\"http://github.com/ocaml/opam-repository/tree/master/packages/%s/%s/opam\">%s</a></td>\n"
             package_name version_name version_name;
 
-          let version_dir = Filename.concat package_dir v.version_name in
-          let status = CheckCudf.solution_deps version_dir version_name sw.sw_name in
+          let status = CheckCudf.solution_deps v.version_cache_dir version_name sw.sw_name in
           begin
             match status with
             | NotInstallable ->
@@ -123,7 +120,7 @@ let report st c stats =
               Printf.fprintf oc "  <td style=\"background-color: yellow;\"></td>\n"
             | Installable deps ->
               let install_prefix =
-                Filename.concat version_dir
+                v.version_cache_dir //
                   (Printf.sprintf "%s-%s-install" v.version_name sw.sw_name) in
               let _build_file = install_prefix ^ ".build" in
               let _log_file = install_prefix ^ ".log" in
@@ -154,12 +151,10 @@ let report st c stats =
   in
 
   StringMap.iter (fun package_name p ->
-      let package_dir = Filename.concat dirs.cache_dir p.package_name in
 
       StringMap.iter (fun version_name v ->
 
-          let version_dir = Filename.concat package_dir v.version_name in
-          let status = CheckCudf.solution_deps version_dir version_name sw.sw_name in
+          let status = CheckCudf.solution_deps v.version_cache_dir version_name sw.sw_name in
           begin
             match status with
             | NotAvailable -> ()
@@ -168,7 +163,7 @@ let report st c stats =
               version_header p v
             | Installable deps ->
               let install_prefix =
-                Filename.concat version_dir
+                v.version_cache_dir //
                   (Printf.sprintf "%s-%s-install" v.version_name sw.sw_name) in
               let build_file = install_prefix ^ ".build" in
               let log_file = install_prefix ^ ".log" in

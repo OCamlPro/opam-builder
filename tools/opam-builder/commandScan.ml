@@ -27,6 +27,7 @@
    *)
 
 open CheckTypes
+open CheckTypes.OP
 
 let arg_commit = ref "manual-call"
 let arg_repo_upgrade = ref true
@@ -45,7 +46,7 @@ let dirs =
 
   let cache_dir = CheckTree.cache_dir_fullname in
   let repo_dir = "." in
-  let opam_dir = Filename.concat current_dir ".opam" in
+  let opam_dir = current_dir // ".opam" in
   let report_dir = CheckTree.reports_dir_fullname in
 
   {

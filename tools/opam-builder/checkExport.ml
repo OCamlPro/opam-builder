@@ -28,7 +28,7 @@ open CopamInstall
 let export st c stats =
   let sw = st.sw in
   let dirs = st.dirs in
-  let date = CheckDate.TIMESTAMP.current () in
+  let date = c.timestamp_date in
   let export_file = Filename.concat dirs.report_dir
       (Printf.sprintf "%s-%s-%s.export"
          date
@@ -110,4 +110,5 @@ let export st c stats =
     ) c.packages;
   Printf.fprintf oc "export:end\n";
   close_out oc;
-  Sys.rename export_file_tmp export_file
+  Sys.rename export_file_tmp export_file;
+  Printf.eprintf "Export: File %S generated\n%!" export_file

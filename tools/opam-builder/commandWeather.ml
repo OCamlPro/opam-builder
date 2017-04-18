@@ -52,19 +52,21 @@ let init_opam () =
   (* compute dependencies, calling aspcud or cudf if needed *)
 
   StringMap.iter (fun package_name p ->
-      match p.package_transitive_checksum with
+      match p.package_opam_closure_checksum with
       | None -> assert false
       | Some (checksum, closure) ->
 
-         let package_dir = Filename.concat st.dirs.cache_dir package_name in
-         if not (Sys.file_exists package_dir) then Unix.mkdir package_dir 0o775;
+         if not (Sys.file_exists p.package_cache_dir) then
+           Unix.mkdir p.package_cache_dir 0o775;
 
-         CheckCudf.check_installability st checksum package_dir package_name;
+         CheckCudf.check_installability st checksum
+                                        p.package_cache_dir package_name;
 
          StringMap.iter (fun version_name v ->
-             let version_dir = Filename.concat package_dir version_name in
-             if not (Sys.file_exists version_dir) then Unix.mkdir version_dir 0o775;
-             CheckCudf.check_installability st checksum version_dir version_name;
+             if not (Sys.file_exists v.version_cache_dir) then
+               Unix.mkdir v.version_cache_dir 0o775;
+             CheckCudf.check_installability st checksum
+                                            v.version_cache_dir version_name;
            ) p.package_versions;
 
     ) c.packages;
@@ -72,13 +74,13 @@ let init_opam () =
   (* Load all the dependencies into the commit record *)
 
   StringMap.iter (fun _ p ->
-      let package_dir = Filename.concat st.dirs.cache_dir p.package_name in
       p.package_status <-
-        Some (CheckCudf.status_of_files package_dir p.package_name c.switch);
+        Some (CheckCudf.status_of_files p.package_cache_dir
+                                        p.package_name c.switch);
       StringMap.iter (fun _ v ->
-          let version_dir = Filename.concat package_dir v.version_name in
           v.version_status <-
-            Some (CheckCudf.status_of_files version_dir v.version_name c.switch)
+            Some (CheckCudf.status_of_files
+                    v.version_cache_dir v.version_name c.switch)
         ) p.package_versions;
     ) c.packages;
 

@@ -33,7 +33,6 @@ let arg_build = ref true
 let args =
   CommandWeather.args @
     [
-
       "--no-build", Arg.Clear arg_build,
       " Do not build packages (supposed already done)";
     ]
@@ -45,7 +44,39 @@ let build_packages () =
   if !arg_build then
     CheckBuild.install_popular st c stats;
 
+  (* load results in version_result, version_build and version_log *)
+
+  StringMap.iter (fun _ p ->
+      StringMap.iter (fun _ v ->
+          let install_prefix =
+            v.version_cache_dir //
+                            (Printf.sprintf "%s-%s-install"
+                                            v.version_name st.sw.sw_name) in
+          let build_file = install_prefix ^ ".build" in
+          let log_file = install_prefix ^ ".log" in
+          let result_file = install_prefix ^ ".result" in
+          v.version_result <- (
+            try
+              match FileString.read_file result_file with
+              | "SUCCESS\n" -> Some true
+              | "FAILURE\n" -> Some false
+              | _ -> None
+            with _ -> None);
+          v.version_build <-
+            (try Some (FileString.read_file build_file) with _ -> None);
+          v.version_log <-
+            (try Some (FileString.read_file log_file) with _ -> None);
+        ) p.package_versions;
+    ) c.packages;
+
   CheckReport.report st c stats;
+
+  let dump_file = Filename.concat st.dirs.report_dir
+      (Printf.sprintf "%s-%s-%s.dump"
+         c.timestamp_date
+         c.commit_name c.switch) in
+
+  CheckIO.save dump_file (c, stats);
 
   (st, c, stats)
 

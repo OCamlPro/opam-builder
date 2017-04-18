@@ -30,9 +30,9 @@ begin
 
     "checkSnapshot.ml";
 
+    "checkTypes.ml";
     "checkTree.ml";
 
-    "checkTypes.ml";
     "checkIO.ml";
     "checkHash.ml";
     "checkHtml.ml";

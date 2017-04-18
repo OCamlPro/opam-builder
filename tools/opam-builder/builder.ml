@@ -205,11 +205,11 @@ let () =
                  CommandGc.action;
 
   Subcommand.add "import" CommandImport.args
-                 false
-                 "Try to build the updated packages"
-                 [ "opam-builder build [arguments]";
+                 true
+                 "Aggregate reports from the specified switches"
+                 [ "opam-builder import REPORTDIRS [arguments]";
                    "";
-                   "  Try to build the updated packages.";
+                   "  Aggregate reports from the specified switches.";
                  ]
                  CommandImport.action;
 
