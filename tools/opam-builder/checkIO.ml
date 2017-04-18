@@ -24,11 +24,11 @@
 open CheckTypes
 
 type file =
-| V1 of V1.commit
+| V1 of commit * stats
 
-let save file_name commit =
+let save file_name (commit, stats) =
   let oc = open_out_bin file_name in
-  output_value oc (V1 commit);
+  output_value oc (V1 (commit, stats));
   close_out oc
 
 let load file_name =
@@ -36,4 +36,4 @@ let load file_name =
   let file = (input_value ic : file) in
   close_in ic;
   match file with
-  | V1 commit -> commit
+  | V1 (commit, stats) -> (commit, stats)

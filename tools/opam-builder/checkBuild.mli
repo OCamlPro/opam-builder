@@ -21,25 +21,22 @@
 
 
 
-val init : CheckTypes.directories -> string list -> CheckTypes.state
+val init : CheckTypes.directories -> string -> CheckTypes.state
 
 val install_popular :
            CheckTypes.state ->
-           CheckTypes.V.commit -> CheckGraph.stats array -> unit
+           CheckTypes.commit -> CheckTypes.stats -> unit
 
 val restore_switch_from_archive :
   CheckTypes.directories -> string -> unit
 val switch_archive : string -> string -> string
 val switch_snapshot : string -> string -> string
 val ignore_opam_files : StringCompat.StringSet.t
-val report :
-  CheckTypes.state ->
-  CheckTypes.V.commit -> CheckGraph.stats array -> unit
-val export :
-  CheckTypes.state ->
-  CheckTypes.V.commit -> CheckGraph.stats array -> unit
 
 
 (* Misc functions *)
 val chdir : string -> unit
 val ignore_bool : bool -> unit
+val command: string -> bool
+
+val upgrade_opam2 : string -> unit

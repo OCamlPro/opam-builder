@@ -24,7 +24,7 @@
 val solution_prefix : string -> string -> string -> string
 
 val solution_deps : string -> string -> string -> CopamInstall.status
-val status_of_files : string -> string -> string -> CheckTypes.V.status
+val status_of_files : string -> string -> string -> CheckTypes.status
 
 val check_installability :
    CheckTypes.state -> CheckDigest.t -> string -> string -> unit

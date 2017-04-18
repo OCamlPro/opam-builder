@@ -19,78 +19,30 @@
 (*  SOFTWARE.                                                             *)
 (**************************************************************************)
 
+(* This command :
+   * performs what "opam-builder scan" would do
+   * performs what "opam-builder weather" would do
+   * performs what "opam-builder build" would do
+   * generates the export file
+ *)
 
-begin
-  library "opam-builder-lib";
+open StringCompat (* for StringMap *)
+open CheckTypes
+open CheckTypes.OP
 
-  files = [
-    "memoryBackup.ml";
-    "checkDate.ml"
-    "checkDigest.ml"
+let args =
+  CommandBuild.args @
+    [
 
-    "checkSnapshot.ml";
-
-    "checkTree.ml";
-
-    "checkTypes.ml";
-    "checkIO.ml";
-    "checkHash.ml";
-    "checkHtml.ml";
-    "checkStats.ml";
-
-    (* Read a commit on disk and check what has changed, no action *)
-    "checkUpdate.ml";
-
-    (* Lint all packages that have changed *)
-    "checkLint.ml";
-
-    (* Check installability *)
-    "checkCudf.ml";
-
-    "checkGC.ml";
-
-    (* check buildability *)
-    "checkBuild.ml";
-    "checkReport.ml";
-
-    "checkExport.ml";
-
-    (* Import generated files and create web pages *)
-    "checkImport.ml";
-  ];
-
-  requires = [
-    "ocplib-system";
-    "ocplib-copam";
-    string_compat;
-    "ocplib-json";
-    "opam-weather-lib";
     ]
-end
 
-begin
-  program "opam-builder";
+let generate_export_file () =
 
-  files = [ "main.ml" ];
+  let (st, c, stats) = CommandBuild.build_packages () in
 
-  requires = [ "opam-builder-lib"]
-end
+  CheckExport.export st c stats;
 
-begin
-  program "opam-builder2";
+  ()
 
-  files = [
-      "commandGc.ml";
-      "commandScan.ml";
-      "commandWeather.ml";
-      "commandWatch.ml";
-      "commandCreate.ml";
-      "commandFile.ml";
-      "commandBuild.ml";
-      "commandExport.ml";
-      "commandImport.ml";
-     "commandSwitch.ml";
-      "builder.ml" ];
-
-  requires = [ "opam-builder-lib"]
-end
+let action args =
+  ignore (generate_export_file () : unit)

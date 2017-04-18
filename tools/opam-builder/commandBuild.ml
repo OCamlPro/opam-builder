@@ -19,78 +19,36 @@
 (*  SOFTWARE.                                                             *)
 (**************************************************************************)
 
+(* This command :
+   * performs what "opam-builder weather" would do
+   * try to build the package dependencies.
+ *)
 
-begin
-  library "opam-builder-lib";
+open StringCompat (* for StringMap *)
+open CheckTypes
+open CheckTypes.OP
 
-  files = [
-    "memoryBackup.ml";
-    "checkDate.ml"
-    "checkDigest.ml"
+let arg_build = ref true
 
-    "checkSnapshot.ml";
+let args =
+  CommandWeather.args @
+    [
 
-    "checkTree.ml";
-
-    "checkTypes.ml";
-    "checkIO.ml";
-    "checkHash.ml";
-    "checkHtml.ml";
-    "checkStats.ml";
-
-    (* Read a commit on disk and check what has changed, no action *)
-    "checkUpdate.ml";
-
-    (* Lint all packages that have changed *)
-    "checkLint.ml";
-
-    (* Check installability *)
-    "checkCudf.ml";
-
-    "checkGC.ml";
-
-    (* check buildability *)
-    "checkBuild.ml";
-    "checkReport.ml";
-
-    "checkExport.ml";
-
-    (* Import generated files and create web pages *)
-    "checkImport.ml";
-  ];
-
-  requires = [
-    "ocplib-system";
-    "ocplib-copam";
-    string_compat;
-    "ocplib-json";
-    "opam-weather-lib";
+      "--no-build", Arg.Clear arg_build,
+      " Do not build packages (supposed already done)";
     ]
-end
 
-begin
-  program "opam-builder";
+let build_packages () =
 
-  files = [ "main.ml" ];
+  let (st, c, stats) = CommandWeather.init_opam () in
 
-  requires = [ "opam-builder-lib"]
-end
+  if !arg_build then
+    CheckBuild.install_popular st c stats;
 
-begin
-  program "opam-builder2";
+  CheckReport.report st c stats;
 
-  files = [
-      "commandGc.ml";
-      "commandScan.ml";
-      "commandWeather.ml";
-      "commandWatch.ml";
-      "commandCreate.ml";
-      "commandFile.ml";
-      "commandBuild.ml";
-      "commandExport.ml";
-      "commandImport.ml";
-     "commandSwitch.ml";
-      "builder.ml" ];
+  (st, c, stats)
 
-  requires = [ "opam-builder-lib"]
-end
+let action args =
+  ignore (build_packages () :
+            CheckTypes.state * CheckTypes.commit * CheckTypes.stats)

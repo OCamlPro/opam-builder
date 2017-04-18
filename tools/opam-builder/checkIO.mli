@@ -21,5 +21,5 @@
 
 
 
-val save : string -> CheckTypes.V.commit -> unit
-val load : string -> CheckTypes.V.commit
+val save : string -> CheckTypes.commit * CheckTypes.stats -> unit
+val load : string -> CheckTypes.commit * CheckTypes.stats

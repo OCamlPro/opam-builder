@@ -25,9 +25,9 @@ val hash_directory : string -> CheckDigest.t
 
 (* Updates the [package_local_checksum] field of [package] using
    the checksums of its versions [concat(VERSION ^ CONTENT)] *)
-val hash_package_content : CheckTypes.V.package -> unit
+val hash_package_content : CheckTypes.package -> unit
 
 (* Updates the [package_transitive_checksum] field of [package] using
    the checksums of other related packages. Uses a counter to traverse
    the graph of packages, that is incremented everytime. *)
-val hash_package_closure : CheckTypes.V.package -> int ref -> unit
+val hash_package_closure : CheckTypes.package -> int ref -> unit

@@ -19,78 +19,22 @@
 (*  SOFTWARE.                                                             *)
 (**************************************************************************)
 
+let arg_fake = ref false
+let arg_ndays = ref 7
 
-begin
-  library "opam-builder-lib";
+let args = [
+    "--fake", Arg.Set arg_fake, " Fake a GC, do not remove files";
+    "--ndays", Arg.Int (fun n -> arg_ndays := n),
+    Printf.sprintf "NDAYS Remove only files older than NDAYS (default %d)"
+                   !arg_ndays;
 
-  files = [
-    "memoryBackup.ml";
-    "checkDate.ml"
-    "checkDigest.ml"
+  ]
 
-    "checkSnapshot.ml";
+let action args =
+  CheckTree.check_in_tree ();
 
-    "checkTree.ml";
-
-    "checkTypes.ml";
-    "checkIO.ml";
-    "checkHash.ml";
-    "checkHtml.ml";
-    "checkStats.ml";
-
-    (* Read a commit on disk and check what has changed, no action *)
-    "checkUpdate.ml";
-
-    (* Lint all packages that have changed *)
-    "checkLint.ml";
-
-    (* Check installability *)
-    "checkCudf.ml";
-
-    "checkGC.ml";
-
-    (* check buildability *)
-    "checkBuild.ml";
-    "checkReport.ml";
-
-    "checkExport.ml";
-
-    (* Import generated files and create web pages *)
-    "checkImport.ml";
-  ];
-
-  requires = [
-    "ocplib-system";
-    "ocplib-copam";
-    string_compat;
-    "ocplib-json";
-    "opam-weather-lib";
-    ]
-end
-
-begin
-  program "opam-builder";
-
-  files = [ "main.ml" ];
-
-  requires = [ "opam-builder-lib"]
-end
-
-begin
-  program "opam-builder2";
-
-  files = [
-      "commandGc.ml";
-      "commandScan.ml";
-      "commandWeather.ml";
-      "commandWatch.ml";
-      "commandCreate.ml";
-      "commandFile.ml";
-      "commandBuild.ml";
-      "commandExport.ml";
-      "commandImport.ml";
-     "commandSwitch.ml";
-      "builder.ml" ];
-
-  requires = [ "opam-builder-lib"]
-end
+  let switch = CheckTree.read_switch () in
+  let fake = !arg_fake in
+  let ndays_threshold = !arg_ndays in
+  let cache_dir = CheckTree.cache_dir_basename in
+  CheckGC.clean ~fake ~ndays_threshold ~cache_dir ~switch

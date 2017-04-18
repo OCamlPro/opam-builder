@@ -21,7 +21,6 @@
 
 
 
-open CheckTypes.V
 open CheckTypes
 open StringCompat
 open CopamInstall

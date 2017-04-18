@@ -42,7 +42,7 @@ let opam_command = ref "opam.dev"
 let opam_cmd t cmd =
   Printf.sprintf "%s %s --root %s" !opam_command cmd t.rootdir
 
-let init ~repo_subdir ?opam rootdir switches =
+let init ~repo_subdir ?opam rootdir switch =
   begin match opam with
     None -> ()
   | Some opam -> opam_command := opam
@@ -50,24 +50,20 @@ let init ~repo_subdir ?opam rootdir switches =
   let t = { rootdir } in
 
   if not (Sys.file_exists ".opam") then begin
-    match switches with
-      [] -> raise AtLeastOneSwitch
-    | switch :: _ ->
-(* BUG-TODO: even with --jobs=1, it seems opam 1.3~dev does not correctly
+      (* BUG-TODO: even with --jobs=1, it seems opam 1.3~dev does not correctly
    set the jobs variable in .opam/config. *)
 
       exit2_ifnot (Printf.kprintf command
-                     "%s --jobs=1 --compiler %s --switch %s --no-setup --use-internal-solver local %s"
-                     (opam_cmd t "init")
-                     switch switch
-                     repo_subdir
+                                  "%s --jobs=1 --compiler %s --switch %s --no-setup --use-internal-solver local %s"
+                                  (opam_cmd t "init")
+                                  switch switch
+                                  repo_subdir
                   );
-  end;
-  List.iter (fun switch ->
-    if not (Sys.file_exists (Filename.concat rootdir switch)) then begin
+    end;
+
+  if not (Sys.file_exists (Filename.concat rootdir switch)) then begin
       exit2_ifnot (Printf.kprintf command "%s %s" (opam_cmd t "switch create") switch)
-    end
-  ) switches;
+    end;
   t
 
 let get_json_field json name =

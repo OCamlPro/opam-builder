@@ -33,7 +33,7 @@ val init :
   repo_subdir: string ->
   ?opam: string -> (* opam command *)
   string -> (* rootdir *)
-  string list -> (* switch list *)
+  string -> (* switch list *)
   t
 
 val check_install :
@@ -49,10 +49,4 @@ val opam_cmd :
   string -> (* sub-command *)
   string
 
-    (*
-val build_and_install :
-  t ->
-  switch:string -> (* switch *)
-  string -> (* version *)
-  int * string
-    *)
+val opam_command : string ref

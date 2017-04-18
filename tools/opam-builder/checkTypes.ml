@@ -23,8 +23,6 @@
 
 open StringCompat
 
-module V1 = struct
-
 type status = {
   s_log : string option;
   s_status : CopamInstall.status;
@@ -37,7 +35,7 @@ type version = {
   version_checksum : CheckDigest.t;
   mutable version_visited : int;
   mutable version_deps : package StringMap.t;
-  mutable version_status : status array;
+  mutable version_status : status option;
   mutable version_lint : version_lint option;
 }
 
@@ -49,7 +47,7 @@ and package = {
   mutable package_visited : int;
   mutable package_versions : version StringMap.t;
   mutable package_deps : package StringMap.t;
-  mutable package_status : status array;
+  mutable package_status : status option;
 }
 
 and version_lint = {
@@ -61,7 +59,7 @@ and version_lint = {
 type commit = {
   check_date : string;
   commit_name : string;
-  switches : string array;
+  switch : string;
 
   (* map from NAME.VERSION to version *)
   mutable versions : version StringMap.t;
@@ -69,10 +67,6 @@ type commit = {
   (* map from NAME to package *)
   mutable packages : package StringMap.t;
 }
-
-end
-
-module V = V1
 
 type cudf = {
     mutable known_universe : Cudf.universe option;
@@ -99,6 +93,36 @@ type directories = {
 
 type state = {
   dirs : directories;
-  sws : switch array;
+  sw : switch;
   root : CopamInstall.t;
 }
+
+
+type version_stats = {
+  s_version : version;
+  mutable s_used : int;      (* #occurrences to compile each version *)
+  mutable s_used_last : int; (* #occurrences to compile each package *)
+}
+
+type stats = {
+  stats_switch : switch;
+
+  stats_version : version_stats array;
+  (* sorted by #occurrences to compile each version *)
+
+  stats_version2 : version_stats array;
+  (* sorted by #occurrences to compile each package *)
+
+  stats_installable_versions : int;
+  stats_installable_packages : int;
+  stats_unavailable_packages : int;
+  stats_unavailable_versions : int;
+  stats_uninstallable_versions : int;
+  stats_uninstallable_packages : int;
+  stats_error_versions : int;
+  stats_error_packages : int;
+}
+
+module OP = struct
+  let (//) = Filename.concat
+end

@@ -28,7 +28,6 @@
 
 
 open StringCompat
-open CheckTypes.V
 open CheckTypes
 
 let max_errors = 50 (* TODO: auto-compute *)

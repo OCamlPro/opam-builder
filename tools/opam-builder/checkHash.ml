@@ -21,7 +21,7 @@
 
 
 
-open CheckTypes.V
+open CheckTypes
 open StringCompat
 
 let rec hash_directory dirname =

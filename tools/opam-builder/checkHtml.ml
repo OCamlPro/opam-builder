@@ -19,9 +19,6 @@
 (*  SOFTWARE.                                                             *)
 (**************************************************************************)
 
-
-
-open CheckTypes.V
 open CheckTypes
 open StringCompat
 open CopamInstall
@@ -51,11 +48,11 @@ let end_html oc =
   Printf.fprintf oc "\n</body></html>"
 
 let print_commit_report st c =
-    (* Let's print a simple html document, for now, showing the commit
+  (* Let's print a simple html document, for now, showing the commit
        information. *)
 
   let oc = open_out (Filename.concat st.dirs.report_dir
-                       (c.commit_name ^ ".html")) in
+                                     (c.commit_name ^ ".html")) in
 
   Printf.fprintf oc "<h1>Commit %s</h1>\n" c.commit_name;
   (*  Printf.fprintf oc "<p>Checked Packages: %d</p>\n" !checked_packages; *)
@@ -65,72 +62,76 @@ let print_commit_report st c =
   Printf.fprintf oc "<tr>\n";
   Printf.fprintf oc "  <td>Package</td>\n";
   Printf.fprintf oc "    <td>Lint</td>\n";
-  Array.iter (fun switch ->
-    Printf.fprintf oc "  <td>%s</td>\n" switch;
-  ) c.switches;
+  Printf.fprintf oc "  <td>%s</td>\n" st.sw.sw_name;
   Printf.fprintf oc "</tr>\n";
 
   StringMap.iter (fun package_name p ->
-    Printf.fprintf oc "<tr>\n";
-    Printf.fprintf oc "  <td>%s</td>\n" package_name;
-    Printf.fprintf oc "  <td></td>\n";
-      Array.iter (fun s ->
-        match s.s_status with
-        | NotInstallable ->
-            Printf.fprintf oc
-              "  <td style=\"background-color: red;\">BAD</td>\n"
-        | NotAvailable ->
-          Printf.fprintf oc "  <td></td>\n"
-        | ExternalError ->
-          Printf.fprintf oc
-            "  <td style=\"background-color: orange;\">ERR</td>\n"
-        | Installable packages ->
-          Printf.fprintf oc
-            "  <td style=\"background-color: green;\">%d</td>\n"
-            (List.length packages)
-      ) p.package_status;
-    Printf.fprintf oc "</tr>\n";
-
-    StringMap.iter (fun version_name v ->
       Printf.fprintf oc "<tr>\n";
-      Printf.fprintf oc "  <td>%s</td>\n" version_name;
-
+      Printf.fprintf oc "  <td>%s</td>\n" package_name;
+      Printf.fprintf oc "  <td></td>\n";
       begin
-        match v.version_lint with
-        | None ->
-          Printf.fprintf oc
-            "  <td style=\"background-color: white;\"></td>\n"
-        | Some { lint_warnings; lint_errors } ->
-          match lint_warnings, lint_errors with
-          | [], [] ->
-            Printf.fprintf oc
-              "  <td style=\"background-color: green;\"></td>\n"
-          | _ ->
-            Printf.fprintf oc
-            "  <td style=\"background-color: red;\">%d</td>\n"
-              (List.length lint_errors)
+        match p.package_status with
+        | None -> ()
+        | Some s ->
+           match s.s_status with
+           | NotInstallable ->
+              Printf.fprintf oc
+                             "  <td style=\"background-color: red;\">BAD</td>\n"
+           | NotAvailable ->
+              Printf.fprintf oc "  <td></td>\n"
+           | ExternalError ->
+              Printf.fprintf oc
+                             "  <td style=\"background-color: orange;\">ERR</td>\n"
+           | Installable packages ->
+              Printf.fprintf oc
+                             "  <td style=\"background-color: green;\">%d</td>\n"
+                             (List.length packages)
       end;
-
-
-      Array.iter (fun s ->
-        match s.s_status with
-        | NotInstallable ->
-          Printf.fprintf oc
-            "  <td style=\"background-color: red;\">BAD</td>\n"
-        | NotAvailable ->
-          Printf.fprintf oc "  <td></td>\n"
-        | ExternalError ->
-          Printf.fprintf oc
-            "  <td style=\"background-color: orange;\">ERR</td>\n"
-        | Installable packages ->
-          Printf.fprintf oc
-            "  <td style=\"background-color: green;\">%d</td>\n" (List.length packages)
-
-      ) v.version_status;
       Printf.fprintf oc "</tr>\n";
 
-    ) p.package_versions;
-  ) c.packages;
+      StringMap.iter (fun version_name v ->
+          Printf.fprintf oc "<tr>\n";
+          Printf.fprintf oc "  <td>%s</td>\n" version_name;
+
+          begin
+            match v.version_lint with
+            | None ->
+               Printf.fprintf oc
+                              "  <td style=\"background-color: white;\"></td>\n"
+            | Some { lint_warnings; lint_errors } ->
+               match lint_warnings, lint_errors with
+               | [], [] ->
+                  Printf.fprintf oc
+                                 "  <td style=\"background-color: green;\"></td>\n"
+               | _ ->
+                  Printf.fprintf oc
+                                 "  <td style=\"background-color: red;\">%d</td>\n"
+                                 (List.length lint_errors)
+          end;
+
+
+          begin
+            match v.version_status with
+            | None -> ()
+            | Some s ->
+               match s.s_status with
+               | NotInstallable ->
+                  Printf.fprintf oc
+                                 "  <td style=\"background-color: red;\">BAD</td>\n"
+               | NotAvailable ->
+                  Printf.fprintf oc "  <td></td>\n"
+               | ExternalError ->
+                  Printf.fprintf oc
+                                 "  <td style=\"background-color: orange;\">ERR</td>\n"
+               | Installable packages ->
+                  Printf.fprintf oc
+                                 "  <td style=\"background-color: green;\">%d</td>\n" (List.length packages)
+
+          end;
+          Printf.fprintf oc "</tr>\n";
+
+        ) p.package_versions;
+    ) c.packages;
 
   Printf.fprintf oc "</table>\n";
   close_out oc;

@@ -19,78 +19,63 @@
 (*  SOFTWARE.                                                             *)
 (**************************************************************************)
 
+module TYPES : sig
 
-begin
-  library "opam-builder-lib";
+  type build_file = (string * build_action) list
 
-  files = [
-    "memoryBackup.ml";
-    "checkDate.ml"
-    "checkDigest.ml"
+   and build_action =
+     | Build of build_report
+     | Install of build_report
+   | DisabledFailed
+   | DisabledSkip
 
-    "checkSnapshot.ml";
+ and build_report =
+   {
+     build_report_begin_time : string;
+     build_report_hash : string;
+     build_report_depends : string list;
+     build_report_depopts : string list;
+     mutable build_report_result : build_result;
+     mutable build_report_snap_errors : build_snap_errors list;
+     mutable build_report_end_time : string;
+   }
 
-    "checkTree.ml";
+   and build_result =
+     | ActionReused
+     | ActionFailed of string (* duration before failure *)
+     | ActionInstalled of string
+     | ActionUnknown
 
-    "checkTypes.ml";
-    "checkIO.ml";
-    "checkHash.ml";
-    "checkHtml.ml";
-    "checkStats.ml";
+   and build_snap_errors =
+     | ModifiedFile of string
+     | RemovedFile of string
 
-    (* Read a commit on disk and check what has changed, no action *)
-    "checkUpdate.ml";
+  exception InvalidFile
 
-    (* Lint all packages that have changed *)
-    "checkLint.ml";
+  end
 
-    (* Check installability *)
-    "checkCudf.ml";
+val switch_file_basename : string
+val cache_dir_basename : string
+val reports_dir_basename : string
 
-    "checkGC.ml";
+(* with current_dir before (current_dir at startup) *)
+val current_dir : string
+val switch_file_fullname : string
+val cache_dir_fullname : string
+val reports_dir_fullname : string
 
-    (* check buildability *)
-    "checkBuild.ml";
-    "checkReport.ml";
+(* read and write builder.switch *)
+val read_switch : unit -> string
+val write_switch : string -> unit
 
-    "checkExport.ml";
+(* Check that we are called in the current switch directory, exit with
+  fatal error otherwise *)
+val check_in_tree: unit -> unit
 
-    (* Import generated files and create web pages *)
-    "checkImport.ml";
-  ];
+(* print a fatal error and exit *)
+val fatal : ('a, unit, string, 'b) format4 -> 'a
 
-  requires = [
-    "ocplib-system";
-    "ocplib-copam";
-    string_compat;
-    "ocplib-json";
-    "opam-weather-lib";
-    ]
-end
 
-begin
-  program "opam-builder";
+(* File with .build *)
 
-  files = [ "main.ml" ];
-
-  requires = [ "opam-builder-lib"]
-end
-
-begin
-  program "opam-builder2";
-
-  files = [
-      "commandGc.ml";
-      "commandScan.ml";
-      "commandWeather.ml";
-      "commandWatch.ml";
-      "commandCreate.ml";
-      "commandFile.ml";
-      "commandBuild.ml";
-      "commandExport.ml";
-      "commandImport.ml";
-     "commandSwitch.ml";
-      "builder.ml" ];
-
-  requires = [ "opam-builder-lib"]
-end
+val read_build : string -> TYPES.build_file

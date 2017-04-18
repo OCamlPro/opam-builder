@@ -21,13 +21,13 @@
 
 
 
-open CheckTypes.V
 open CheckTypes
 open StringCompat
 open CopamInstall
 
-let debug = (try ignore (Sys.getenv "OPAM_BUILDER_DEBUG"); true
-  with _ -> false)
+let debug =
+  try ignore (Sys.getenv "OPAM_BUILDER_DEBUG"); true
+  with _ -> false
 
 let checksum_rule targets checksum f =
   match targets with
@@ -74,7 +74,7 @@ let new_package c package_name =
       package_transitive_checksum = None;
       package_versions = StringMap.empty;
       package_deps = StringMap.empty;
-      package_status = [||];
+      package_status = None;
     } in
     c.packages <- StringMap.add package_name p c.packages;
     p
@@ -88,10 +88,10 @@ let new_version c
     version_checksum;
     version_visited = 0;
     version_deps = StringMap.empty;
-    version_status = [||];
+    version_status = None;
     version_lint = None;
     } in
-  Printf.eprintf "   NEW VERSION %s\n%!" version_name;
+  (*  Printf.eprintf "   NEW VERSION %s\n%!" version_name; *)
   version_package.package_versions <- StringMap.add version_name
     v version_package.package_versions;
   StringSet.iter (fun dep ->
@@ -108,14 +108,14 @@ let opam_file dirs v =
     [ dirs.repo_dir; "packages";
       p.package_name; v.version_name; "opam"]
 
-let check_commit ~lint ~commit dirs switches =
+let check_commit ~lint ~commit ~switch dirs =
   Printf.eprintf "check_commit %s\n%!" commit;
 
   let check_date = CopamMisc.gettime () in
   let c = {
       check_date;
+      switch;
       commit_name = commit;
-      switches;
       versions = StringMap.empty;
       packages = StringMap.empty;
     } in
@@ -127,7 +127,7 @@ let check_commit ~lint ~commit dirs switches =
   CopamRepo.iter_packages
     (Filename.concat dirs.repo_dir dirs.repo_subdir)
     (fun package version dirname ->
-         Printf.eprintf "NEW PACKAGE %S\n%!" package;
+      (*         Printf.eprintf "NEW PACKAGE %S\n%!" package; *)
          let opam_file = Filename.concat dirname "opam" in
          if Sys.file_exists opam_file then
            try
@@ -158,8 +158,9 @@ let check_commit ~lint ~commit dirs switches =
 
           let checksum = v.version_checksum in
 
-          let lint_file = Filename.concat version_dir
-                                          (Printf.sprintf "%s.lint" v.version_name) in
+          let lint_file = Filename.concat
+                            version_dir
+                            (Printf.sprintf "%s.lint" v.version_name) in
 
           checksum_rule [lint_file] checksum (fun () ->
 
