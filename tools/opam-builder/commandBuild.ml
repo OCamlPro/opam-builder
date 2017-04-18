@@ -59,13 +59,14 @@ let build_packages () =
             try
               match FileString.read_file result_file with
               | "SUCCESS\n" -> Some true
-              | "FAILURE\n" -> Some false
+              | "FAILURE\n" ->
+                 v.version_log <-
+                   (try Some (FileString.read_file log_file) with _ -> None);
+                 Some false
               | _ -> None
             with _ -> None);
           v.version_build <-
             (try Some (FileString.read_file build_file) with _ -> None);
-          v.version_log <-
-            (try Some (FileString.read_file log_file) with _ -> None);
         ) p.package_versions;
     ) c.packages;
 

@@ -131,6 +131,7 @@ module Subcommand : sig
 end
 
 let () =
+  Printexc.record_backtrace true;
   Subcommand.add "watch"
                  CommandWatch.args
                  false

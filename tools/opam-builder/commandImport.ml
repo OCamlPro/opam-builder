@@ -36,6 +36,8 @@ let args =
     ]
 
 let action dirs =
+  if not (Sys.file_exists "html") then
+    Unix.mkdir "html" 0o755;
   let state = CheckImport.init dirs in
   while true do
     CheckImport.import state;

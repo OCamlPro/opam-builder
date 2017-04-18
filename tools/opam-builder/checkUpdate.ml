@@ -68,7 +68,7 @@ let new_package c dirs package_name =
   try
     StringMap.find package_name c.packages
   with Not_found ->
-    let package_cache_dir = dirs.cache_dir // "packages" // package_name in
+    let package_cache_dir = dirs.cache_dir // package_name in
     let p = {
       package_name;
       package_visited = 0;
@@ -153,7 +153,7 @@ let check_commit ~lint ~commit ~switch dirs =
           let version_opam_checksum = CheckDigest.file opam_file in
 
           let version_cache_dir =
-            dirs.cache_dir // "packages" // package_name // version_name
+            dirs.cache_dir // package_name // version_name
           in
           let file = CopamOpamFile.parse opam_file in
           (*         CopamOpamFile.print file *)
