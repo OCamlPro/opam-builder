@@ -96,6 +96,8 @@ function load_table(table_title, table_name, json_file, callback){
         console.log("replace new table...");
         oldTable.parentNode.replaceChild(newTable, oldTable);
         console.log("replace new table done.");
+        newTable.style.display = "";
+        document.getElementById("package").style.display = "none";
     }
 
     var xmlhttp = new XMLHttpRequest();
@@ -112,7 +114,14 @@ function load_table(table_title, table_name, json_file, callback){
 
 }
 
-
+function swap_view()
+{
+    var table = document.getElementById("packages");
+    var div = document.getElementById("package");
+    var table_display = table.style.display;
+    table.style.display = div.style.display;
+    div.style.display = table_display;
+}
 
 function opam_onload()
 {
