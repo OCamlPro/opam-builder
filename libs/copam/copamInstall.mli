@@ -20,14 +20,17 @@
 (**************************************************************************)
 
 
+module TYPES : sig
+  type t = { rootdir : string; }
 
-type t = { rootdir : string; }
+  type status =
+    | ExternalError
+    | NotAvailable
+    | NotInstallable
+    | Installable of (string * string) list (* (name * version) list *)
+end
 
-type status =
-| ExternalError
-| NotAvailable
-| NotInstallable
-| Installable of (string * string) list (* (name * version) list *)
+open TYPES
 
 val init :
   repo_subdir: string ->

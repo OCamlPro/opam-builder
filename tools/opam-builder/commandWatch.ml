@@ -36,7 +36,9 @@ let args = [
     Printf.sprintf "REMOTE Watch remote REMOTE (default is %S)" !arg_remote;
   ]
 
-let last_commit_cmd = "git rev-parse --short HEAD > last-commit.txt"
+let last_commit_file = "last-commit.txt"
+let last_commit_cmd =
+  Printf.sprintf "git rev-parse --short HEAD > %s" last_commit_file
 
 let command cmd =
   let exit = Sys.command cmd in
@@ -46,38 +48,38 @@ let command cmd =
     false
   end else true
 
+let get_last_commit () =
+  if command last_commit_cmd then begin
+      let ic = open_in last_commit_file in
+      let commit = input_line ic in
+      close_in ic;
+      Sys.remove last_commit_file;
+      commit
+
+    end else "unknown"
+
 let action args =
 
   let last_commit = ref "reboot" in
   while true do
     if
       Printf.kprintf command "git checkout %s" !arg_branch &&
-        Printf.kprintf command "git pull %s %s" !arg_remote !arg_branch &&
-          command last_commit_cmd then begin
+        Printf.kprintf command "git pull %s %s" !arg_remote !arg_branch then
+      let commit = get_last_commit () in
+      if !last_commit <> commit then begin
 
-        let commit =
-          let ic = open_in "last-commit.txt" in
-          let commit = input_line ic in
-          close_in ic;
-          commit
-        in
-        Sys.remove "last-commit.txt";
+          (match !arg_on_commit with
+             [] -> ()
+           | args ->
+              let args = List.rev (commit :: args) in
+              let args = List.map (function
+                                     "SELF" -> Sys.argv.(0)
+                                   | s -> s) args in
+              ignore ( command (String.concat " " args) : bool );
+          );
 
-        if !last_commit <> commit then begin
+          last_commit := commit;
+        end;
 
-            (match !arg_on_commit with
-               [] -> ()
-             | args ->
-                let args = List.rev (commit :: args) in
-                let args = List.map (function
-                                       "SELF" -> Sys.argv.(0)
-                                     | s -> s) args in
-                ignore ( command (String.concat " " args) : bool );
-            );
-
-            last_commit := commit;
-          end
-
-      end;
     Unix.sleep !arg_delay
   done

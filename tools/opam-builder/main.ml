@@ -104,7 +104,7 @@ let () =
       match path with
       | [] -> ()
       | dir :: path ->
-        let file = Filename.concat dir cmd in
+        let file = dir // cmd in
         if Sys.file_exists file then begin
           Printf.eprintf "%s is in your PATH. You should clean it !\n%!" file;
           exit 2
@@ -141,13 +141,13 @@ let action_on_commit st commit =
       | None -> assert false
       | Some (checksum, closure) ->
 
-         let package_dir = Filename.concat dirs.cache_dir package_name in
+         let package_dir = dirs.cache_dir // package_name in
          if not (Sys.file_exists package_dir) then Unix.mkdir package_dir 0o775;
 
          CheckCudf.check_installability st checksum package_dir package_name;
 
          StringMap.iter (fun version_name v ->
-             let version_dir = Filename.concat package_dir version_name in
+             let version_dir = package_dir // version_name in
              if not (Sys.file_exists version_dir) then Unix.mkdir version_dir 0o775;
              CheckCudf.check_installability st checksum version_dir version_name;
            ) p.package_versions;
@@ -157,11 +157,11 @@ let action_on_commit st commit =
   (* 6/ Load all the dependencies *)
 
   StringMap.iter (fun _ p ->
-      let package_dir = Filename.concat dirs.cache_dir p.package_name in
+      let package_dir = dirs.cache_dir // p.package_name in
       p.package_status <-
         Some (CheckCudf.status_of_files package_dir p.package_name switch);
       StringMap.iter (fun _ v ->
-          let version_dir = Filename.concat package_dir v.version_name in
+          let version_dir = package_dir // v.version_name in
           v.version_status <-
             Some (CheckCudf.status_of_files version_dir v.version_name switch)
         ) p.package_versions;
@@ -183,7 +183,7 @@ let current_dir = CheckTree.current_dir
 
 let cache_dir = CheckTree.cache_dir_fullname
 let repo_dir = "."
-let opam_dir = Filename.concat current_dir ".opam"
+let opam_dir = current_dir // ".opam"
 let report_dir = CheckTree.reports_dir_fullname
 
 let _ =

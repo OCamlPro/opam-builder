@@ -21,15 +21,16 @@
 
 
 
-open CheckTypes
 open StringCompat
-open CopamInstall
+open CheckTypes
+open CheckTypes.OP
+open CopamInstall.TYPES
 
 let export st c stats =
   let sw = st.sw in
   let dirs = st.dirs in
   let date = c.timestamp_date in
-  let export_file = Filename.concat dirs.report_dir
+  let export_file = dirs.report_dir //
       (Printf.sprintf "%s-%s-%s.export"
          date
          c.commit_name sw.sw_name) in
@@ -42,10 +43,9 @@ let export st c stats =
   Printf.fprintf oc "date:%f\n" (Unix.time());
 
   StringMap.iter (fun package_name p ->
-      let package_dir = Filename.concat dirs.cache_dir p.package_name in
       Printf.fprintf oc "package:%s\n" package_name;
       let status = CheckCudf.solution_deps
-          package_dir package_name sw.sw_name in
+          p.package_cache_dir package_name sw.sw_name in
       begin
         match status with
         | NotInstallable ->
@@ -63,9 +63,8 @@ let export st c stats =
       StringMap.iter (fun version_name v ->
           Printf.fprintf oc "version:%s\n" version_name;
 
-          let version_dir = Filename.concat package_dir v.version_name in
           let status = CheckCudf.solution_deps
-              version_dir version_name sw.sw_name in
+              v.version_cache_dir version_name sw.sw_name in
           begin
             match status with
             | NotInstallable ->
@@ -80,7 +79,7 @@ let export st c stats =
                 (String.concat ","
                    (List.map (fun (n,v) -> Printf.sprintf "%s.%s" n v) deps));
               let install_prefix =
-                Filename.concat version_dir
+                v.version_cache_dir //
                   (Printf.sprintf "%s-%s-install" v.version_name sw.sw_name) in
               let build_file = install_prefix ^ ".build" in
               let log_file = install_prefix ^ ".log" in

@@ -33,6 +33,7 @@ begin
     "checkTypes.ml";
     "checkTree.ml";
 
+    "checkJson.ml";
     "checkIO.ml";
     "checkHash.ml";
     "checkHtml.ml";
@@ -80,16 +81,23 @@ begin
   program "opam-builder2";
 
   files = [
+      "checkFiles.ml" (file2string = [
+                           "files/opam-builder.html";
+                           "files/opam-builder.js";
+                           "files/opam-builder.css";
+                           "files/opam-builder-ocamlpro-inria-irill.png";
+                         ]);
+      "commandWatch.ml";
       "commandGc.ml";
       "commandScan.ml";
       "commandWeather.ml";
-      "commandWatch.ml";
       "commandCreate.ml";
       "commandFile.ml";
       "commandBuild.ml";
       "commandExport.ml";
       "commandImport.ml";
-     "commandSwitch.ml";
+      "commandSwitch.ml";
+      "commandJson.ml";
       "builder.ml" ];
 
   requires = [ "opam-builder-lib"]

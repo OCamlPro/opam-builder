@@ -19,40 +19,7 @@
 (*  SOFTWARE.                                                             *)
 (**************************************************************************)
 
-module TYPES = struct
-type build_file = (string * build_action) list
-
- and build_action =
-   | Build of build_report
-   | Install of build_report
-   | DisabledFailed
-   | DisabledSkip
-
- and build_report =
-   {
-     build_report_begin_time : string;
-     build_report_hash : string;
-     build_report_depends : string list;
-     build_report_depopts : string list;
-     mutable build_report_result : build_result;
-     mutable build_report_snap_errors : build_snap_errors list;
-     mutable build_report_end_time : string;
-   }
-
- and build_result =
-   | ActionReused
-   | ActionFailed of string
-   | ActionInstalled of string
-   | ActionUnknown
-
-   and build_snap_errors =
-     | ModifiedFile of string
-     | RemovedFile of string
-
-exception InvalidFile
-
-end
-
+open CheckTypes
 open CheckTypes.OP
 
 let cache_dir_basename = "builder.cache"
@@ -97,10 +64,7 @@ let check_in_tree () =
               "dir", ".git";
             ]
 
-open TYPES
-
-let read_build file =
-  let lines = FileString.read_lines file in
+let parse_build_lines msg lines =
   let lines = Array.map (fun line ->
                   OcpString.split line ':') lines in
   let rec iter actions lines =
@@ -137,7 +101,7 @@ let read_build file =
        iter_action action actions lines
 
     | line :: lines ->
-       Printf.eprintf "File %S, cannot parse line: \n" file;
+       Printf.eprintf "%s, cannot parse line: \n" msg;
        Printf.eprintf "%s\n%!" (String.concat ":" line);
        raise InvalidFile
 
@@ -145,7 +109,7 @@ let read_build file =
     match lines with
 
     | [] ->
-       Printf.eprintf "File %S, unexpected end of file \n" file;
+       Printf.eprintf "%s, unexpected end of file \n" msg;
        raise InvalidFile
 
     | [ "archive" ; "reused" ] :: lines ->
@@ -176,9 +140,13 @@ let read_build file =
        iter_action action actions lines
 
     | line :: lines ->
-       Printf.eprintf "File %S, cannot parse action line: \n" file;
+       Printf.eprintf "%s, cannot parse action line: \n" msg;
        Printf.eprintf "%s\n%!" (String.concat ":" line);
        raise InvalidFile
 
   in
   iter [] (Array.to_list lines)
+
+let read_build_file file =
+  let lines = FileString.read_lines file in
+  parse_build_lines (Printf.sprintf "File %S" file) lines

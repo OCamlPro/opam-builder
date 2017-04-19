@@ -19,9 +19,9 @@
 (*  SOFTWARE.                                                             *)
 (**************************************************************************)
 
-open CheckTypes
 open StringCompat
-open CopamInstall
+open CheckTypes
+open CopamInstall.TYPES
 
 let compute_stats st c =
   Printf.eprintf "Analyzing commit %s...\n%!" c.commit_name;

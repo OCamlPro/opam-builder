@@ -1,0 +1,6 @@
+.Ok { background-color: green; }
+.BadDeps { background-color: orange; }
+.Fail { background-color: red; }
+
+
+.attribution { float:right}

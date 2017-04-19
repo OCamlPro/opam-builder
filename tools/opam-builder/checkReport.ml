@@ -21,10 +21,10 @@
 
 
 
+open StringCompat
 open CheckTypes
 open CheckTypes.OP
-open StringCompat
-open CopamInstall
+open CopamInstall.TYPES
 
 let report st c stats =
   let sw = st.sw in

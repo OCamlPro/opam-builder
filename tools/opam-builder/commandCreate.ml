@@ -54,7 +54,7 @@ let action switches =
       CheckBuild.upgrade_opam2 "2.0";
 
       let opam_root = CheckTree.current_dir // switch // ".opam" in
-      let (_ : CopamInstall.t) = CopamInstall.init
+      let (_ : CopamInstall.TYPES.t) = CopamInstall.init
                                    ~repo_subdir:"2.0"
                                    opam_root switch
       in

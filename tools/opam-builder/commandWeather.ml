@@ -51,6 +51,10 @@ let init_opam () =
 
   (* compute dependencies, calling aspcud or cudf if needed *)
 
+  let _status, _log_content =
+    CopamInstall.check_install
+      st.root st.sw.sw_cudf.cudf_backup ~switch:st.sw.sw_name "base-unix" in
+
   StringMap.iter (fun package_name p ->
       match p.package_opam_closure_checksum with
       | None -> assert false
@@ -84,10 +88,11 @@ let init_opam () =
         ) p.package_versions;
     ) c.packages;
 
-  let commit_file = st.dirs.report_dir //
-                      (Printf.sprintf "%s-%s.weather" c.check_date
-                                      c.commit_name)
-  in
+  let commit_file =
+    st.dirs.report_dir //
+      (Printf.sprintf "%s-%s-%s.weather"
+         c.timestamp_date
+         c.commit_name c.switch) in
 
   let stats = CheckStats.compute_stats st c in
 

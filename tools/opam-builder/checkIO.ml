@@ -27,9 +27,11 @@ type file =
 | V1 of commit * stats
 
 let save file_name (commit, stats) =
-  let oc = open_out_bin file_name in
+  let tmp_file = file_name ^ ".tmp" in
+  let oc = open_out_bin tmp_file in
   output_value oc (V1 (commit, stats));
-  close_out oc
+  close_out oc;
+  Sys.rename tmp_file file_name
 
 let load file_name =
   let ic = open_in_bin file_name in
@@ -37,3 +39,8 @@ let load file_name =
   close_in ic;
   match file with
   | V1 (commit, stats) -> (commit, stats)
+
+let getsize filename =
+  try
+    (Unix.stat filename).Unix.st_size
+  with _ -> -1

@@ -9,7 +9,9 @@ begin library "opam-weather-lib"
     "weatherReasons.ml"
     "weatherConfig.ml"
   ]
-  requires = [ "dose3.common" "dose3.algo" "unix" "dose3.debian" ]
+            requires = [ "dose3.common" "dose3.algo" "unix" "dose3.debian"
+                                        "ocplib-compat"
+                       ]
 end
 
 begin program "opam-weather-dose"
@@ -17,11 +19,13 @@ begin program "opam-weather-dose"
   requires = [ "opam-weather-lib" ]
 end
 
+(* Broken since we modified WeatherReasons
 
 begin program "opam-weather-report"
   files = [ "weatherReport.ml" ]
   requires = [ "dose3.debian" "opam-weather-lib" ]
 end
+ *)
 
 begin program "opam-weather-history"
   files = [ "weatherHistory.ml" ]

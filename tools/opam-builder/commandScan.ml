@@ -29,11 +29,11 @@
 open CheckTypes
 open CheckTypes.OP
 
-let arg_commit = ref "manual-call"
+let arg_commit = ref None
 let arg_repo_upgrade = ref true
 
 let args = [
-    "--commit", Arg.String ((:=) arg_commit),
+    "--commit", Arg.String (fun s -> arg_commit := Some s),
     "COMMIT Set commit name";
 
     "--no-repo-upgrade", Arg.Clear arg_repo_upgrade,
@@ -96,7 +96,10 @@ let init_repo () =
   if !arg_repo_upgrade then CheckBuild.upgrade_opam2 "2.0";
 
   let st = init_switch switch in
-  let c = init_commit st !arg_commit in
+  let commit = match !arg_commit with
+    | None -> CommandWatch.get_last_commit ()
+    | Some commit -> commit in
+  let c = init_commit st commit in
   st, c
 
 let action args =

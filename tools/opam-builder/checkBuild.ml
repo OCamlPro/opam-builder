@@ -21,17 +21,16 @@
 
 
 
-open CheckTypes
 open StringCompat
-open CopamInstall
+open CheckTypes
+open CheckTypes.OP
+open CopamInstall.TYPES
 
 let switch_archive cache_dir switch =
-  Filename.concat cache_dir
-    (Printf.sprintf "switch-%s.tar.gz" switch)
+  cache_dir // (Printf.sprintf "switch-%s.tar.gz" switch)
 
 let switch_snapshot cache_dir switch =
-  Filename.concat cache_dir
-    (Printf.sprintf "switch-%s.snap" switch)
+  cache_dir // (Printf.sprintf "switch-%s.snap" switch)
 
 let chdir dir =
   Printf.eprintf "cd %s\n%!" dir;
@@ -59,7 +58,7 @@ let restore_switch_from_archive dirs switch =
   Printf.eprintf "Restoring switch %s done\n%!" switch;
   ()
 
-let opam_files_to_backup = ["environment"; "reinstall"; "state"]
+let opam_files_to_backup = ["environment"; "switch-state"]
 let ignore_opam_files = StringSet.empty
 
 let restore_switch st sw =
@@ -78,7 +77,7 @@ let build_and_install st ~switch version =
   Printf.eprintf "build_and_install %s on %s\n%!" version switch;
   let dirs = st.dirs in
   let log_file = "check-install.log" in
-  let builder_file = Filename.concat dirs.cache_dir "builder.txt" in
+  let builder_file = dirs.cache_dir // "builder.txt" in
   (try Sys.remove log_file with _ -> ());
   (try Sys.remove builder_file with _ -> ());
   let exit_code =
@@ -108,12 +107,12 @@ let compute_solution_checksum st solution_deps =
   Buffer.add_string b sw.sw_name;
   List.iter (fun (package_name, version) ->
       let version_name = package_name ^ "." ^ version in
-      let package_dir = Filename.concat dirs.cache_dir package_name in
-      let version_dir = Filename.concat package_dir version_name in
+      let package_dir = dirs.cache_dir // package_name in
+      let version_dir = package_dir // version_name in
 
       begin
         let install_prefix =
-          Filename.concat version_dir
+          version_dir //
                           (Printf.sprintf "%s-%s-install" version_name sw.sw_name) in
         let result_file = install_prefix ^ ".result" in
         try
@@ -131,7 +130,7 @@ let compute_solution_checksum st solution_deps =
         with _ ->
           ()
       end;
-      let checksum_file = Filename.concat version_dir
+      let checksum_file = version_dir //
                                           (version_name ^ ".lint.checksum") in
       let checksum = CheckDigest.digest_of_file checksum_file in
       Buffer.add_string b version_name;
@@ -190,11 +189,11 @@ let really_check_install failures st v only_to_clean
 
 let check_installable_solution
       st
-      version_dir v
+      v
       only_to_clean solution_deps =
   let sw = st.sw in
   let install_prefix =
-    Filename.concat version_dir
+    v.version_cache_dir //
                     (Printf.sprintf "%s-%s-install" v.version_name sw.sw_name)
   in
   let build_file = install_prefix ^ ".build" in
@@ -203,6 +202,14 @@ let check_installable_solution
   let checksum, failures = compute_solution_checksum st solution_deps in
   Printf.eprintf "Checksum to build would be %s\n%!"
                  (CheckDigest.to_printable_string checksum);
+
+  (* Note: a build_file might be empty if:
+     * opam failed to download the sources (server down, bad CRC)
+     * there are no build/install instructions (base-* packages)
+     In both cases, it doesn't really matter, no ?
+   *)
+  if CheckIO.getsize build_file = 0 then Sys.remove build_file;
+  if CheckIO.getsize result_file = 0 then Sys.remove result_file;
   CheckUpdate.checksum_rule [result_file; log_file; build_file] checksum
                             (fun () ->
                               really_check_install failures st v only_to_clean
@@ -214,13 +221,9 @@ let check_installable_solution
 let check_build_and_install_version only_to_clean st c sw v =
   Printf.eprintf "check_build_and_install_version %s on %s\n%!"
                  v.version_name sw.sw_name;
-  let dirs = st.dirs in
-  let p = v.version_package in
-  let package_dir = Filename.concat dirs.cache_dir p.package_name in
-  let version_dir = Filename.concat package_dir v.version_name in
 
   let solution_deps =
-    CheckCudf.solution_deps version_dir v.version_name sw.sw_name in
+    CheckCudf.solution_deps v.version_cache_dir v.version_name sw.sw_name in
 
   match solution_deps with
   | NotAvailable | NotInstallable ->
@@ -230,12 +233,12 @@ let check_build_and_install_version only_to_clean st c sw v =
   | Installable solution_deps ->
      check_installable_solution
        st
-      version_dir v
+      v
       only_to_clean solution_deps
 
-let install_popular st c stats =
+let save_stats st c stats =
   let dirs = st.dirs in
-  let stats_file = Filename.concat dirs.report_dir
+  let stats_file = dirs.report_dir //
                                    (Printf.sprintf "%s.stats" c.commit_name) in
   let oc = open_out stats_file in
   let { stats_switch;  stats_version; stats_version2;
@@ -285,6 +288,9 @@ let install_popular st c stats =
 
   close_out oc;
   Printf.eprintf "Stats saved\n%!";
+  ()
+
+let install_popular st c stats =
 
   List.iter (fun only_to_clean ->
 
@@ -336,7 +342,7 @@ let init dirs switch =
 
   let sw_name = switch in
   let snapshot_file = switch_snapshot dirs.cache_dir sw_name in
-  let sw_dir = Filename.concat dirs.opam_dir sw_name in
+  let sw_dir = dirs.opam_dir // sw_name in
   let sw_snapshot =
     if not (Sys.file_exists snapshot_file) then begin
         Printf.eprintf "Creating switch snapshot %s\n%!" snapshot_file;
@@ -347,7 +353,7 @@ let init dirs switch =
       end else
       CheckSnapshot.load snapshot_file
   in
-  let sw_state_dir = Filename.concat sw_dir ".opam-switch" in
+  let sw_state_dir = sw_dir // ".opam-switch" in
   let sw_backup = MemoryBackup.save sw_state_dir opam_files_to_backup in
 
 

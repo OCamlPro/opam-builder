@@ -214,4 +214,13 @@ let () =
                  ]
                  CommandImport.action;
 
+  Subcommand.add "json" CommandJson.args
+                 true
+                 "Generate a JSON file from these .dump files"
+                 [ "opam-builder json DUMPS [arguments]";
+                   "";
+                   "  Generate a JSON file from .dump files.";
+                 ]
+                 CommandJson.action;
+
   Subcommand.parse [ "opam-builder SUBCOMMAND [arguments]" ]

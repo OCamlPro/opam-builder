@@ -23,7 +23,7 @@
 
 val solution_prefix : string -> string -> string -> string
 
-val solution_deps : string -> string -> string -> CopamInstall.status
+val solution_deps : string -> string -> string -> CopamInstall.TYPES.status
 val status_of_files : string -> string -> string -> CheckTypes.status
 
 val check_installability :

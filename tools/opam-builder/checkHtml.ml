@@ -19,9 +19,9 @@
 (*  SOFTWARE.                                                             *)
 (**************************************************************************)
 
-open CheckTypes
 open StringCompat
-open CopamInstall
+open CheckTypes
+open CopamInstall.TYPES
 
 let style_url = "http://opam.ocamlpro.com/builder/html/style.css"
 

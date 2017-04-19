@@ -23,3 +23,5 @@
 
 val save : string -> CheckTypes.commit * CheckTypes.stats -> unit
 val load : string -> CheckTypes.commit * CheckTypes.stats
+
+val getsize : string -> int

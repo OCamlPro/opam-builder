@@ -50,8 +50,8 @@ let build_packages () =
       StringMap.iter (fun _ v ->
           let install_prefix =
             v.version_cache_dir //
-                            (Printf.sprintf "%s-%s-install"
-                                            v.version_name st.sw.sw_name) in
+              (Printf.sprintf "%s-%s-install"
+                              v.version_name st.sw.sw_name) in
           let build_file = install_prefix ^ ".build" in
           let log_file = install_prefix ^ ".log" in
           let result_file = install_prefix ^ ".result" in
@@ -63,19 +63,27 @@ let build_packages () =
                  v.version_log <-
                    (try Some (FileString.read_file log_file) with _ -> None);
                  Some false
-              | _ -> None
+              | _ ->
+               let tmp_file = result_file ^ ".tmp" in
+               (try Sys.remove tmp_file with _ -> ());
+               (try Sys.rename result_file tmp_file with _ -> ());
+               None
             with _ -> None);
           v.version_build <-
-            (try Some (FileString.read_file build_file) with _ -> None);
+            (try Some (CheckTree.read_build_file build_file) with _ ->
+               let tmp_file = build_file ^ ".tmp" in
+               (try Sys.remove tmp_file with _ -> ());
+               (try Sys.rename build_file tmp_file with _ -> ());
+               None);
         ) p.package_versions;
     ) c.packages;
 
   CheckReport.report st c stats;
 
-  let dump_file = Filename.concat st.dirs.report_dir
-      (Printf.sprintf "%s-%s-%s.dump"
-         c.timestamp_date
-         c.commit_name c.switch) in
+  let dump_file = st.dirs.report_dir //
+                    (Printf.sprintf "%s-%s-%s.dump"
+                                    c.timestamp_date
+                                    c.commit_name c.switch) in
 
   CheckIO.save dump_file (c, stats);
 

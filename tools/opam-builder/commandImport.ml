@@ -19,13 +19,6 @@
 (*  SOFTWARE.                                                             *)
 (**************************************************************************)
 
-(* This command :
-   * performs what "opam-builder scan" would do
-   * performs what "opam-builder weather" would do
-   * performs what "opam-builder build" would do
-   * generates the export file
- *)
-
 open StringCompat (* for StringMap *)
 open CheckTypes
 open CheckTypes.OP

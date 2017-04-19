@@ -24,18 +24,24 @@
 (* Manage an opam installation in an opam-repository ! *)
 
 open CopamMisc
+open OcpJson.TYPES
 
-type status =
-| ExternalError
-| NotAvailable
-| NotInstallable
-| Installable of (string * string) list (* (name * version) list *)
+module TYPES = struct
+
+  type t = { rootdir : string; }
+
+  type status =
+    | ExternalError
+    | NotAvailable
+    | NotInstallable
+    | Installable of (string * string) list (* (name * version) list *)
+end
+
+open TYPES
 
 exception AtLeastOneSwitch
 
 let exit2_ifnot b = if not b then exit 2
-
-type t = { rootdir : string; }
 
 let opam_command = ref "opam.dev"
 
@@ -70,7 +76,7 @@ let get_json_field json name =
   let rep = ref None in
   try
     match json with
-    | OcpJson.O fields ->
+    | O fields ->
       List.iter (fun (field_name, field_value) ->
         if field_name = name then begin rep := Some field_value; raise Exit end
       ) fields;
@@ -86,13 +92,13 @@ let get_json_field json name =
 
 let parse_json_solution =
   function
-  | OcpJson.A installs  ->
+  | L installs  ->
     let packages = List.map (fun d ->
       match d with
-        OcpJson.O [ "install",
-                    OcpJson.O [
-                      "name", OcpJson.String name;
-                      "version", OcpJson.String version;
+        O [ "install",
+                    O [
+                      "name", S name;
+                      "version", S version;
                     ]] -> (name, version)
       | _ ->
         Printf.eprintf "parse_json_solution: no %S field\n%!" "install";
@@ -108,11 +114,11 @@ let packages_of_json json =
   let d = OcpJson.of_string json in
   try
     match d with
-    | OcpJson.A [ solution ] -> parse_json_solution solution
+    | L [ solution ] -> parse_json_solution solution
 
-    | OcpJson.A [] -> [ ]
+    | L [] -> [ ]
 
-    | OcpJson.O list ->
+    | O list ->
       begin try
         let solution = get_json_field d "solution" in
         parse_json_solution solution

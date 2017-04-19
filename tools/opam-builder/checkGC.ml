@@ -25,6 +25,8 @@
    versions, which is not required.
  *)
 
+open CheckTypes.OP
+
 type archive = {
   filename : string;
   mutable used : int;
@@ -36,7 +38,7 @@ let clean ?(fake=false) ?(ndays_threshold=7) ~cache_dir ~switch =
   Printf.eprintf "GC on switch: %s\n%!" switch;
   let archives = Hashtbl.create 111111 in
   let register_archive version_dir file_base =
-    let filename = Filename.concat version_dir file_base in
+    let filename = version_dir // file_base in
     try
       let a = Hashtbl.find archives filename in
       a.occur <- a.occur + 1
@@ -49,9 +51,7 @@ let clean ?(fake=false) ?(ndays_threshold=7) ~cache_dir ~switch =
     let package_name, _ = OcpString.cut_at version_name '.' in
     let file_base = Printf.sprintf "%s-%s" hash switch in
     let filename =
-      Filename.concat cache_dir
-                      (Filename.concat package_name
-                                       (Filename.concat version_name file_base)) in
+      cache_dir // package_name // version_name // file_base in
     Printf.eprintf "need_archive %s\n%!" filename;
     try
       let a = Hashtbl.find archives filename in
@@ -61,7 +61,7 @@ let clean ?(fake=false) ?(ndays_threshold=7) ~cache_dir ~switch =
                   { filename; used = 1; occur = 0 }
   in
   let read_build_file version_dir file =
-    let filename = Filename.concat version_dir file in
+    let filename = version_dir // file in
     (* Printf.eprintf "  processing %s\n%!" filename; *)
     let version_name_ref = ref None in
     let hash_ref = ref None in
@@ -105,11 +105,11 @@ let clean ?(fake=false) ?(ndays_threshold=7) ~cache_dir ~switch =
 
   let packages = Sys.readdir cache_dir in
   Array.iter (fun package_name ->
-      let package_dir = Filename.concat cache_dir package_name in
+      let package_dir = cache_dir // package_name in
       if Sys.is_directory package_dir then
         let versions = Sys.readdir package_dir in
         Array.iter (fun version_name ->
-            let version_dir = Filename.concat package_dir version_name in
+            let version_dir = package_dir // version_name in
             if Sys.is_directory version_dir then
               clean_version package_name version_name version_dir
           ) versions;

@@ -19,41 +19,6 @@
 (*  SOFTWARE.                                                             *)
 (**************************************************************************)
 
-module TYPES : sig
-
-  type build_file = (string * build_action) list
-
-   and build_action =
-     | Build of build_report
-     | Install of build_report
-   | DisabledFailed
-   | DisabledSkip
-
- and build_report =
-   {
-     build_report_begin_time : string;
-     build_report_hash : string;
-     build_report_depends : string list;
-     build_report_depopts : string list;
-     mutable build_report_result : build_result;
-     mutable build_report_snap_errors : build_snap_errors list;
-     mutable build_report_end_time : string;
-   }
-
-   and build_result =
-     | ActionReused
-     | ActionFailed of string (* duration before failure *)
-     | ActionInstalled of string
-     | ActionUnknown
-
-   and build_snap_errors =
-     | ModifiedFile of string
-     | RemovedFile of string
-
-  exception InvalidFile
-
-  end
-
 val switch_file_basename : string
 val cache_dir_basename : string
 val reports_dir_basename : string
@@ -78,4 +43,5 @@ val fatal : ('a, unit, string, 'b) format4 -> 'a
 
 (* File with .build *)
 
-val read_build : string -> TYPES.build_file
+val parse_build_lines : string -> string array -> CheckTypes.build_file
+val read_build_file : string -> CheckTypes.build_file

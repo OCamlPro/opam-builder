@@ -31,12 +31,14 @@
   * dirs : the directories (often st.dirs)
 *)
 
-open CheckTypes
 open StringCompat
-open CopamInstall
+
+open CheckTypes
+open CheckTypes.OP
+open CopamInstall.TYPES
 
 let solution_prefix version_dir version_name switch =
-  Filename.concat version_dir
+  version_dir //
     (Printf.sprintf "%s-%s-solution" version_name switch)
 
 let deps_of_status status =
@@ -85,10 +87,19 @@ let check_installability state checksum version_dir version_name =
   let deps_file = solution_prefix ^ ".deps" in
   let log_file = solution_prefix ^ ".log" in
 
+  if Sys.file_exists deps_file then begin
+      let ic = open_in deps_file in
+      let line = input_line ic in
+      close_in ic;
+      if line = "external-error" then Sys.remove deps_file
+    end;
+
+
   CheckUpdate.checksum_rule
     [deps_file; log_file]
     checksum (fun () ->
-      Printf.eprintf "  checking installability of %s on %s\n%!" version_name sw.sw_name;
+      Printf.eprintf "  checking installability of %s on %s\n%!"
+                     version_name sw.sw_name;
 
       try
         let universe =
@@ -117,16 +128,17 @@ let check_installability state checksum version_dir version_name =
                                         package.Cudf.version
                   in
                   let version_name = name ^ "." ^ version in
-                  let package_info = match diag.result with
+                  let _package_info = match diag.result with
                     | Success _ -> ()
                     | Failure f ->
                        let reasons = f () in
-                       Hashtbl.add sw.sw_cudf.solver_cache version_name reasons
+                       Hashtbl.add sw.sw_cudf.solver_cache version_name
+                                   (package,reasons)
                   in
                   ()
                 in
 
-                let nfail =
+                let _nfail =
                   Algo.Depsolver.univcheck ~global_constraints:[] ~callback universe
                 in
                 (* The unavailable packages must be absent to perform
@@ -135,12 +147,12 @@ let check_installability state checksum version_dir version_name =
                 WeatherDiag.add_unav_packages universe cudf_file;
                 universe
         in
-        let reasons = Hashtbl.find sw.sw_cudf.solver_cache version_name in
+        let (package,reasons) = Hashtbl.find sw.sw_cudf.solver_cache version_name in
         Printf.eprintf "  %s is in cache, not installable...\n%!"
                        version_name;
         let reasons = WeatherReasons.string_of_reasons
                         (fun name -> name)
-                        universe reasons in
+                        package universe reasons in
         FileString.write_file log_file reasons;
         FileString.write_file deps_file "no-solution";
       with Not_found ->

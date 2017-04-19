@@ -19,13 +19,15 @@
 (*  SOFTWARE.                                                             *)
 (**************************************************************************)
 
+open CheckTypes
+
 let action args =
   List.iter (fun file ->
       Printf.printf "File %s\n%!" file;
       if Filename.check_suffix file ".build" then begin
           try
-            ignore (CheckTree.read_build file : CheckTree.TYPES.build_file);
-          with CheckTree.TYPES.InvalidFile ->
+            ignore (CheckTree.read_build_file file : build_file);
+          with CheckTypes.InvalidFile ->
             Printf.printf "   Error: Invalid file\n%!";
         end else
         Printf.printf "  Don't know what to do\n%!"
