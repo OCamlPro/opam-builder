@@ -123,7 +123,7 @@ function opam_onload()
         for(var i = 0; i < table.rows.length; i++){
             var tr = table.rows[i];
             var td = tr.cells[0].innerHTML;
-            if(td.toUpperCase().indexOf(pattern) >= 0 ){
+            if(td == "" || td.toUpperCase().indexOf(pattern) >= 0 ){
                 tr.style.display = "";
             } else {
                 tr.style.display = "none";
