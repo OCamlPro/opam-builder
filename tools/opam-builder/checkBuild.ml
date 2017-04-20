@@ -99,7 +99,7 @@ let build_and_install st ~switch version =
   (exit_code, log_content, builder_content)
 
 
-let compute_solution_checksum st solution_deps =
+let compute_solution_checksum st v solution_deps =
   let sw = st.sw in
   let dirs = st.dirs in
   let failures = ref [] in
@@ -110,28 +110,29 @@ let compute_solution_checksum st solution_deps =
       let package_dir = dirs.cache_dir // package_name in
       let version_dir = package_dir // version_name in
 
-      begin
-        let install_prefix =
-          version_dir //
-                          (Printf.sprintf "%s-%s-install" version_name sw.sw_name) in
-        let result_file = install_prefix ^ ".result" in
-        try
-          match FileString.read_file result_file with
-          | "SUCCESS\n" -> ()
-          | "FAILURE\n" ->
-             Printf.eprintf
-               "Compilation disabled because dependency %s failed before\n%!"
-               version_name;
-             failures := version_name :: !failures
-          | _ ->
-             Printf.eprintf
-               "Warning: weird, dependency %s has a non parsable result file\n%!"
-               version_name
-        with _ ->
-          ()
-      end;
+      if version_name <> v.version_name then begin
+          let install_prefix =
+            version_dir //
+              (Printf.sprintf "%s-%s-install" version_name sw.sw_name) in
+          let result_file = install_prefix ^ ".result" in
+          try
+            match FileString.read_file result_file with
+            | "SUCCESS\n" -> ()
+            | "FAILURE\n" ->
+               Printf.eprintf
+                 "Compilation disabled because dependency %s failed before\n%!"
+                 version_name;
+               failures := version_name :: !failures
+            | _ ->
+               Printf.eprintf
+                 "Warning: weird, dependency %s has a non parsable result file\n%!"
+                 version_name
+          with _ ->
+            ()
+        end;
+
       let checksum_file = version_dir //
-                                          (version_name ^ ".lint.checksum") in
+                            (version_name ^ ".lint.checksum") in
       let checksum = CheckDigest.digest_of_file checksum_file in
       Buffer.add_string b version_name;
       CheckDigest.add_digest b checksum;
@@ -199,7 +200,7 @@ let check_installable_solution
   let build_file = install_prefix ^ ".build" in
   let log_file = install_prefix ^ ".log" in
   let result_file = install_prefix ^ ".result" in
-  let checksum, failures = compute_solution_checksum st solution_deps in
+  let checksum, failures = compute_solution_checksum st v solution_deps in
   Printf.eprintf "Checksum to build would be %s\n%!"
                  (CheckDigest.to_printable_string checksum);
 
@@ -298,6 +299,16 @@ let install_popular st c stats =
         { stats_switch;  stats_version; stats_version2;
           stats_installable_versions;
           stats_installable_packages } = stats in
+
+      let len = Array.length stats_version in
+      for i = 1 to len do
+        let s = stats_version.(len-i) in
+        Printf.eprintf "checking %s %d\n%!"
+                       s.s_version.version_name s.s_used;
+        check_build_and_install_version only_to_clean st c stats_switch s.s_version
+      done;
+
+      (*
       let len = Array.length stats_version2 in
       for i = 1 to len do
         let s = stats_version2.(len-i) in
@@ -307,6 +318,7 @@ let install_popular st c stats =
           check_build_and_install_version only_to_clean st c stats_switch s.s_version
       done;
 
+
       let len = Array.length stats_version2 in
       for i = 1 to len do
         let s = stats_version2.(len-i) in
@@ -315,6 +327,7 @@ let install_popular st c stats =
         if s.s_used = 1 then
           check_build_and_install_version only_to_clean st c stats_switch s.s_version
       done;
+       *)
     ) [true; false]
 
 let init dirs switch =

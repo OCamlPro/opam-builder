@@ -4,21 +4,22 @@
     <script type="text/javascript" src="opam-builder.js"></script>
     <link type="text/css" rel="stylesheet" href="opam-builder.css" />
   </head>
-  <body onload='opam_onload();' class="page-body">
+  <body onload='body_onload();' class="page-body">
 
     <div class="banner">
       <h1 class="banner-title">OPAM BUILDER</h1>
     <input id="search" class="search-query" type="text" placeholder="Search packages"/>
-    <button onclick='clear_search()'>Clear Search</button>
-    <button onclick='update_main_table()'>Update All Switches</button>
-    <button onclick='swap_displays()'>Swap View Switches/Package</button>
-    <button onclick='swap_diff()'>Swap Diff Mode</button>
-    <button onclick='clear_cache()'>Clear Json Cache</button>
+    <button onclick='button_clear_search()'>Clear Search</button>
+    <button onclick='button_update_all_switches()'>Update All Switches</button>
+    <button onclick='button_swap_view_switches_package()'>Swap View Switches/Package</button>
+    <button onclick='button_swap_diff_mode()'>Swap Diff Mode</button>
+    <button onclick='button_clear_cache()'>Clear Json Cache</button>
     <h2 id="table_title">All Switches</h2>
     </div>
     <a  class="attribution" href="http://www.ocamlpro.com/"><img id="attribution" src="opam-builder-ocamlpro-inria-irill.png" /></a>
     <div class="sub-banner"></div>
     <div class="packages">
+      <table class="predicates" id="predicates"></table>
       <table class="packages-table" id="packages"></table>
     </div>
     <div id="package" class="package">

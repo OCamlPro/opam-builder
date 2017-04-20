@@ -1,8 +1,130 @@
-var diff_mode = false;
-var version_col = 0;
-var first_row = 0;
+
+/* A simple cache of JSON files */
 
 var www_cache = {};
+
+function download_json(url, callback)
+{
+    try {
+        var json =  www_cache(url);
+        if( json == null ) {
+            really_download_json(url, callback);
+        } else {
+            callback(json);
+        }
+    } catch(err){
+        really_download_json(url, callback);
+    }
+}
+
+function really_download_json(url, callback){
+    var xmlhttp = new XMLHttpRequest();
+    
+    console.log("download_json " + url);
+    xmlhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+            var myArr = JSON.parse(this.responseText);
+            www_cache[url] = myArr;
+            callback(myArr);
+        }
+    };
+    xmlhttp.open("GET", url, true);
+    xmlhttp.send();
+}
+
+function clear_cache()
+{
+    www_cache = {};
+}
+
+/* Some constants, never change */
+
+var version_col = 0;
+var switches_col = 1;
+var first_row = 3;
+
+/* fields that should be put without interpretation */
+var json_package_fields = [
+    "version_name",
+    "status",
+    "build_log",
+    "build_result",
+    "check_date",
+    "switch_name",
+    "commit_name",
+    "build_info",
+    "depends"
+];
+
+/* The state of the interface */
+
+/* true: display table, false: display package */
+var show_table = true;
+
+var table_json = "opam-builder.json";
+var table_switch = "";
+var table_search = "";
+var table_diff_mode = false;
+
+var package_json = "";
+
+function object_of_state()
+{
+    return {
+        show_table: show_table,
+        
+        table_json: table_json,
+        table_switch: table_switch,
+        table_search: table_search,
+        table_diff_mode: table_diff_mode,
+
+        package_json: package_json
+    };
+}
+
+function history_update(){
+    history.pushState( object_of_state(),
+                       null,
+                       "opam-builder.html");
+}
+
+/* This function is used to display the initial page, after loading the page */
+
+function body_onload()
+{
+    var search = document.getElementById("search");
+    search.value = window.location.hash.substr(1);
+
+    search.onkeyup = update_view;
+    display_main_table();
+}
+
+/* Manage history */
+
+window.addEventListener('popstate', function(e) {
+    // e.state is equal to the data-attribute of the last image we clicked
+    if( e.state == null ){
+        console.log("popstate null !");
+
+        display_main_table();
+    } else {
+        console.log("popstate " + e.state.message);
+        if( e.state.table ){
+            console.log("popstate to TABLE");
+            if( e.state.switch_name == "" ){
+                display_main_table();
+            } else {
+                display_switch_table(e.state.switch_name);
+            }
+            
+        } else {
+            console.log("popstate to PACKAGE");
+            swap_to_package_json(e.state.json);
+        }
+    }
+});
+
+
 
 function switch_callback(sw)
 {
@@ -136,11 +258,6 @@ function table_of_json(table_title, table_name, json, callback){
     update_view();
 }
 
-function clear_cache()
-{
-    www_cache = {};
-}
-
 function update_main_table()
 {
     clear_cache();
@@ -172,47 +289,17 @@ function load_table(table_title, table_name, url, callback){
                   });
 }
 
-function download_json(url, callback)
-{
-    try {
-        var json =  www_cache(url);
-        if( json == null ) {
-            really_download_json(url, callback);
-        } else {
-            callback(json);
-        }
-    } catch(err){
-        really_download_json(url, callback);
-    }
-}
-
-function really_download_json(url, callback){
-    var xmlhttp = new XMLHttpRequest();
-    
-    console.log("download_json " + url);
-    xmlhttp.onreadystatechange = function() {
-        if (this.readyState == 4 && this.status == 200) {
-            var myArr = JSON.parse(this.responseText);
-            www_cache[url] = myArr;
-            callback(myArr);
-        }
-    };
-    xmlhttp.open("GET", url, true);
-    xmlhttp.send();
-}
-
-var table_view = true;
-
 function swap_displays()
 {
-    table_view = !table_view;
+    show_table = !show_table;
     update_displays();
 }
+
 function update_displays()
 {
     var table = document.getElementById("packages");
     var div = document.getElementById("package");
-    if( table_view ){
+    if( show_table ){
         table.style.display = "";
         div.style.display = "none";
     } else {
@@ -220,31 +307,6 @@ function update_displays()
         div.style.display = "";
     }
 }
-
-function array_iter(table, f){
-    for(var i = 0; i < table.length; i++){
-        f(table[i]);
-    }
-}
-
-function clear_children(t){
-    while (t.hasChildNodes()) {
-        t.removeChild(t.lastChild);
-    }
-}
-
-/* fields that should be put without interpretation */
-var json_package_fields = [
-    "version_name",
-    "status",
-    "build_log",
-    "build_result",
-    "check_date",
-    "switch_name",
-    "commit_name",
-    "build_info",
-    "depends"
-];
 
 function swap_to_package_json(json)
 {
@@ -271,7 +333,7 @@ function swap_to_package_json(json)
                    );
                    depends.appendChild(li);
                });
-    table_view = false;
+    show_table = false;
     update_displays();
 }
 
@@ -290,42 +352,10 @@ function swap_to_package(url)
     });
 }
 
-window.addEventListener('popstate', function(e) {
-    // e.state is equal to the data-attribute of the last image we clicked
-    if( e.state == null ){
-        console.log("popstate null !");
-
-        display_main_table();
-    } else {
-        console.log("popstate " + e.state.message);
-        if( e.state.table ){
-            console.log("popstate to TABLE");
-            if( e.state.switch_name == "" ){
-                display_main_table();
-            } else {
-                display_switch_table(e.state.switch_name);
-            }
-            
-        } else {
-            console.log("popstate to PACKAGE");
-            swap_to_package_json(e.state.json);
-        }
-    }
-});
-
 function swap_diff()
 {
     diff_mode = !diff_mode;
     update_view();
-}
-
-function opam_onload()
-{
-    var search = document.getElementById("search");
-    search.value = window.location.hash.substr(1);
-
-    search.onkeyup = update_view;
-    display_main_table();
 }
 
 function clear_search()
@@ -378,4 +408,43 @@ function update_view()
         }
     }
     
+}
+
+
+
+/* These functions are the ones appearing in opam-builder.html */
+
+function button_clear_search()
+{
+    clear_search();
+}
+function button_update_all_switches()
+{
+    update_main_table();
+}
+function button_swap_view_switches_package()
+{
+    swap_displays();
+}
+function button_swap_diff_mode()
+{
+    swap_diff();
+}
+function button_clear_cache()
+{
+    clear_cache();
+}
+
+/* Generic functions */
+
+function array_iter(table, f){
+    for(var i = 0; i < table.length; i++){
+        f(table[i]);
+    }
+}
+
+function clear_children(t){
+    while (t.hasChildNodes()) {
+        t.removeChild(t.lastChild);
+    }
 }

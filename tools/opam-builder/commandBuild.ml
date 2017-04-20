@@ -105,7 +105,7 @@ be rebuilt and keep believing that there is still a problem.
 Here, we try to detect this case, and restart the build (only once)
 after deleting the wrong result files. *)
 
-    let inconsistencies_detected = ref [] in
+    let inconsistencies_detected = ref StringMap.empty in
     StringMap.iter (fun _ p ->
         StringMap.iter (fun _ v ->
             match v.version_build with
@@ -123,12 +123,15 @@ after deleting the wrong result files. *)
                                "Inconsistency: %S skipped, but dep %S is ok\n%!"
                                v.version_name vdep.version_name;
 
-                             inconsistencies_detected := v :: !inconsistencies_detected;
+                             inconsistencies_detected :=
+                               StringMap.add v.version_name v
+                                             !inconsistencies_detected;
+
                           | _ -> ()
                         with Not_found ->
                           Printf.eprintf
                             "CommandBuild Error: build dep %S of %S does not exist !!\n%!"
-                                         dep v.version_name
+                            dep v.version_name
                       end
 
                    | _ -> ()
@@ -136,31 +139,33 @@ after deleting the wrong result files. *)
 
           ) p.package_versions;
       ) c.packages;
-    match !inconsistencies_detected with
-    | versions when may_restart ->
-       Printf.eprintf "Restarting whole build !!!\n%!";
-       List.iter (fun v ->
-           let install_prefix =
-             v.version_cache_dir //
-               (Printf.sprintf "%s-%s-install"
-                               v.version_name st.sw.sw_name) in
-           let result_file = install_prefix ^ ".build" in
-           (try Sys.remove result_file with _ ->());
-         ) versions;
-       iter false
-    | _ ->
 
-       CheckReport.report st c stats;
+    if not (StringMap.is_empty !inconsistencies_detected) && may_restart
+    then begin
 
-       let dump_file = st.dirs.report_dir //
-                         (Printf.sprintf "%s-%s-%s.dump"
-                                         c.timestamp_date
-                                         c.commit_name c.switch) in
+        Printf.eprintf "Restarting whole build !!!\n%!";
+        StringMap.iter (fun _ v ->
+            let install_prefix =
+              v.version_cache_dir //
+                (Printf.sprintf "%s-%s-install"
+                                v.version_name st.sw.sw_name) in
+            let result_file = install_prefix ^ ".result" in
+            (try Sys.remove result_file with _ ->());
+          ) !inconsistencies_detected;
+        iter false
 
-       CheckIO.save dump_file (c, stats);
+      end else begin
 
-       (st, c, stats)
+        CheckReport.report st c stats;
+        let dump_file = st.dirs.report_dir //
+                          (Printf.sprintf "%s-%s-%s.dump"
+                                          c.timestamp_date
+                                          c.commit_name c.switch) in
 
+        CheckIO.save dump_file (c, stats);
+        (st, c, stats)
+
+      end
 
   in
   iter true
