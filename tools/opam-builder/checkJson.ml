@@ -23,6 +23,7 @@ open StringCompat
 open OcpJson.TYPES
 open CopamInstall.TYPES
 open CheckTypes
+open CheckTypes.OP
 
 let minify = true
 
@@ -31,9 +32,80 @@ module VersionMap = Map.Make(struct
                               let compare = Versioning.Debian.compare
                               end)
 
-let of_commits filename cs =
+let of_commit ~replace_commit_tree c =
+  let dirname = Printf.sprintf "%s-%s-%s.files"
+                               c.timestamp_date c.commit_name c.switch in
+  if Sys.file_exists dirname &&
+       not replace_commit_tree then ()
+  else
+    let () = () in
+    if not ( Sys.file_exists dirname ) then
+      Unix.mkdir dirname 0o755;
+    StringMap.iter (fun _ p ->
+        StringMap.iter (fun _ v ->
+            let status =
+              match v.version_result with
+              | Some true -> "Ok"
+              | Some false -> "Fail"
+              | None ->
+                 match v.version_status with
+                 | None -> "NotChecked"
+                 | Some status ->
+                    match status.s_status with
+                    | ExternalError -> "Error"
+                    | NotAvailable -> "Missing"
+                    | NotInstallable -> "BadDeps"
+                    | Installable _ -> "NotBuilt"
+            in
+            let t = O [
+                        "package_name", S p.package_name;
+                        "version_name", S v.version_name;
+                        "status", S status;
+                        "timestamp_date", S c.timestamp_date;
+                        "check_date", S c.check_date;
+                        "switch_name", S c.switch;
+                        "commit_name", S c.commit_name;
+                        "build_result",
+                        S (match v.version_result with
+                           | None -> "not available"
+                           | Some true -> "Success"
+                           | Some false -> "Failed");
+                        "build_log",
+                        S (match v.version_log with
+                           | None -> "not available"
+                           | Some s -> s);
+                        "build_info",
+                        S (match v.version_build with
+                           | None -> "not available"
+                           | Some s -> "available");
+                        "depends",
+                        L (match v.version_status with
+                           | Some { s_status = Installable deps } ->
+                              List.map (fun (s,v) ->
+                                  S (s ^ "." ^ v)) deps
+                           | _ -> [])
+                      ]
+            in
+
+            let s = OcpJson.to_string ~minify t in
+            (*
+            let dirname = dirname // p.package_name in
+            if not (Sys.file_exists dirname) then
+              Unix.mkdir dirname 0o755; *)
+            let filename = dirname //(v.version_name ^ ".json") in
+            let oc = open_out filename in
+            output_string oc s;
+            close_out oc
+
+          ) p.package_versions
+      ) c.packages;
+    ()
+
+
+let of_commits ~replace_commit_tree filename cs =
 
   let dates = L (List.map (fun c -> S c.check_date) cs) in
+  let timestamps = L (List.map (fun c -> S c.timestamp_date) cs) in
   let commits = L (List.map (fun c -> S c.commit_name) cs) in
   let switches = L (List.map (fun c -> S c.switch) cs) in
 
@@ -78,9 +150,10 @@ let of_commits filename cs =
                       | NotInstallable -> "BadDeps"
                       | Installable _ -> "NotBuilt"
               in
-              t.(i) <- state
+              t.(i) <- state;
             ) p.package_versions
         ) c.packages;
+      of_commit replace_commit_tree c;
     ) cs;
 
   let packages = ref [] in
@@ -103,6 +176,7 @@ let of_commits filename cs =
     ) !map;
   let packages = List.rev !packages in
   let t = O [ "dates", dates;
+              "timestamps", timestamps;
               "commits", commits;
               "switches", switches;
               "packages", L packages ] in

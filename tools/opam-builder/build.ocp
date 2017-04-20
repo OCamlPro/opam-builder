@@ -87,14 +87,16 @@ begin
                            "files/opam-builder.css";
                            "files/opam-builder-ocamlpro-inria-irill.png";
                          ]);
-      "commandWatch.ml";
       "commandGc.ml";
       "commandScan.ml";
       "commandWeather.ml";
-      "commandCreate.ml";
       "commandFile.ml";
       "commandBuild.ml";
       "commandExport.ml";
+      "commandWatch.ml";
+
+      "commandCreate.ml";
+
       "commandImport.ml";
       "commandSwitch.ml";
       "commandJson.ml";

@@ -30,11 +30,14 @@ let args = [
 
   ]
 
-let action args =
-  CheckTree.check_in_tree ();
+let do_gc () =
 
   let switch = CheckTree.read_switch () in
   let fake = !arg_fake in
   let ndays_threshold = !arg_ndays in
   let cache_dir = CheckTree.cache_dir_basename in
   CheckGC.clean ~fake ~ndays_threshold ~cache_dir ~switch
+
+let action args =
+  CheckTree.check_in_tree ();
+  do_gc ()

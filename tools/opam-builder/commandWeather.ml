@@ -102,5 +102,7 @@ let init_opam () =
   (st, c, stats)
 
 let action args =
+  CheckTree.check_in_tree ();
+  CommandScan.check_env ();
   ignore (init_opam () :
             CheckTypes.state * CheckTypes.commit * CheckTypes.stats )

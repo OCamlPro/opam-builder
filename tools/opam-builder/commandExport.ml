@@ -45,4 +45,6 @@ let generate_export_file () =
   ()
 
 let action args =
+  CheckTree.check_in_tree ();
+  CommandScan.check_env ();
   ignore (generate_export_file () : unit)

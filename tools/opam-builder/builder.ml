@@ -132,15 +132,6 @@ end
 
 let () =
   Printexc.record_backtrace true;
-  Subcommand.add "watch"
-                 CommandWatch.args
-                 false
-                 "Watch an opam-repository"
-                 [ "opam-builder watch [arguments]";
-                   "";
-                   "  Watch the opam-repository in which it is called.";
-                 ]
-                 CommandWatch.action;
 
   Subcommand.add "create" []
                  true
@@ -222,5 +213,15 @@ let () =
                    "  Generate a JSON file from .dump files.";
                  ]
                  CommandJson.action;
+
+  Subcommand.add "watch"
+                 CommandWatch.args
+                 true
+                 "Watch an opam-repository"
+                 [ "opam-builder watch [arguments]";
+                   "";
+                   "  Watch the opam-repository in which it is called.";
+                 ]
+                 CommandWatch.action;
 
   Subcommand.parse [ "opam-builder SUBCOMMAND [arguments]" ]

@@ -4,14 +4,33 @@
     <script type="text/javascript" src="opam-builder.js"></script>
     <link type="text/css" rel="stylesheet" href="opam-builder.css" />
   </head>
-  <body onload='opam_onload();'>
-    <a href="http://www.ocamlpro.com/"><img class="attribution" id="attribution" src="opam-builder-ocamlpro-inria-irill.png" /></a>
-    <h1>OPAM BUILDER</h1>
+  <body onload='opam_onload();' class="page-body">
+
+    <div class="banner">
+      <h1 class="banner-title">OPAM BUILDER</h1>
     <input id="search" class="search-query" type="text" placeholder="Search packages"/>
-    <button onclick='main_callback()'>Update All Switches</button>
-    <button onclick='swap_view()'>Swap View Switches/Package</button>
+    <button onclick='clear_search()'>Clear Search</button>
+    <button onclick='update_main_table()'>Update All Switches</button>
+    <button onclick='swap_displays()'>Swap View Switches/Package</button>
+    <button onclick='swap_diff()'>Swap Diff Mode</button>
+    <button onclick='clear_cache()'>Clear Json Cache</button>
     <h2 id="table_title">All Switches</h2>
-    <table id="packages"></table>
-    <div id="package">One Package</div>
+    </div>
+    <a  class="attribution" href="http://www.ocamlpro.com/"><img id="attribution" src="opam-builder-ocamlpro-inria-irill.png" /></a>
+    <div class="sub-banner"></div>
+    <div class="packages">
+      <table class="packages-table" id="packages"></table>
+    </div>
+    <div id="package" class="package">
+      <h2>Package <div id="version_name"></div></h2>
+      <h3>State: <div id="status"></div></h3>
+      <h3>Check Date: <pre id="check_date"></pre></h3>
+      <h3>Switch: <pre id="switch_name"></pre></h3>
+      <h3>Commit: <pre id="commit_name"></pre></h3>
+      <h3>Build Result: <pre id="build_result"></pre></h3>
+      <h3>Build Log:</h3> <pre id="build_log"></pre>
+      <h3>Build Info:</h3> <pre id="build_info"></pre>
+      <h3>Depends:</h3> <ul id="depends"></ul>
+    </div>
   </body>
   </html>

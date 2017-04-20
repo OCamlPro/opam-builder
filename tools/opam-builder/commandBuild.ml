@@ -25,6 +25,7 @@
  *)
 
 open StringCompat (* for StringMap *)
+open CopamInstall.TYPES
 open CheckTypes
 open CheckTypes.OP
 
@@ -39,56 +40,133 @@ let args =
 
 let build_packages () =
 
-  let (st, c, stats) = CommandWeather.init_opam () in
+  let rec iter may_restart =
+    let (st, c, stats) = CommandWeather.init_opam () in
 
-  if !arg_build then
-    CheckBuild.install_popular st c stats;
+    if !arg_build then
+      CheckBuild.install_popular st c stats;
 
-  (* load results in version_result, version_build and version_log *)
+    (* load results in version_result, version_build and version_log *)
 
-  StringMap.iter (fun _ p ->
-      StringMap.iter (fun _ v ->
-          let install_prefix =
-            v.version_cache_dir //
-              (Printf.sprintf "%s-%s-install"
-                              v.version_name st.sw.sw_name) in
-          let build_file = install_prefix ^ ".build" in
-          let log_file = install_prefix ^ ".log" in
-          let result_file = install_prefix ^ ".result" in
-          v.version_result <- (
-            try
-              match FileString.read_file result_file with
-              | "SUCCESS\n" -> Some true
-              | "FAILURE\n" ->
-                 v.version_log <-
-                   (try Some (FileString.read_file log_file) with _ -> None);
-                 Some false
-              | _ ->
-               let tmp_file = result_file ^ ".tmp" in
-               (try Sys.remove tmp_file with _ -> ());
-               (try Sys.rename result_file tmp_file with _ -> ());
-               None
-            with _ -> None);
-          v.version_build <-
-            (try Some (CheckTree.read_build_file build_file) with _ ->
-               let tmp_file = build_file ^ ".tmp" in
-               (try Sys.remove tmp_file with _ -> ());
-               (try Sys.rename build_file tmp_file with _ -> ());
-               None);
-        ) p.package_versions;
-    ) c.packages;
+    StringMap.iter (fun _ p ->
+        StringMap.iter (fun _ v ->
+            let install_prefix =
+              v.version_cache_dir //
+                (Printf.sprintf "%s-%s-install"
+                                v.version_name st.sw.sw_name) in
+            let build_file = install_prefix ^ ".build" in
+            let log_file = install_prefix ^ ".log" in
+            let result_file = install_prefix ^ ".result" in
+            v.version_result <- (
+              try
+                match FileString.read_file result_file with
+                | "SUCCESS\n" ->
+                   Some true
+                | "FAILURE\n" ->
+                   v.version_log <-
+                     (try Some (FileString.read_file log_file) with _ -> None);
+                   Some false
+                | _ ->
+                   let tmp_file = result_file ^ ".tmp" in
+                   (try Sys.remove tmp_file with _ -> ());
+                   (try Sys.rename result_file tmp_file with _ -> ());
+                   None
+              with _ -> None);
+            v.version_build <-
+              (try Some (CheckTree.read_build_file build_file) with _ ->
+                 let tmp_file = build_file ^ ".tmp" in
+                 (try Sys.remove tmp_file with _ -> ());
+                 (try Sys.rename build_file tmp_file with _ -> ());
+                 None);
+            match v.version_status with
+            | Some { s_status = Installable deps } ->
+               List.iter (fun (package, version) ->
+                   let dep = package ^ "." ^ version in
+                   try
+                     let vdep = StringMap.find dep c.versions in
+                     v.version_revdeps <- vdep :: v.version_revdeps
+                   with Not_found ->
+                     Printf.eprintf
+                       "CommandBuild Error: status dep %S of %S does not exist !!\n%!"
+                       dep v.version_name
 
-  CheckReport.report st c stats;
+                 ) deps
+            | _ -> ()
+          ) p.package_versions;
+      ) c.packages;
 
-  let dump_file = st.dirs.report_dir //
-                    (Printf.sprintf "%s-%s-%s.dump"
-                                    c.timestamp_date
-                                    c.commit_name c.switch) in
+    (* Sometimes, a package will not built for external reasons. In
+this case, some other packages will be skipped because of that
+failure.  However, opam-builder might later detect it, and restart a
+finally successful build for the initial package, but unfortunately,
+since the dependencies have not changed, the other packages will not
+be rebuilt and keep believing that there is still a problem.
 
-  CheckIO.save dump_file (c, stats);
+Here, we try to detect this case, and restart the build (only once)
+after deleting the wrong result files. *)
 
-  (st, c, stats)
+    let inconsistencies_detected = ref [] in
+    StringMap.iter (fun _ p ->
+        StringMap.iter (fun _ v ->
+            match v.version_build with
+            | None -> ()
+            | Some steps ->
+               List.iter (fun (dep, action) ->
+                   match action with
+                   | DisabledFailed ->
+                      begin
+                        try
+                          let vdep = StringMap.find dep c.versions in
+                          match vdep.version_result with
+                          | Some true ->
+                             Printf.eprintf
+                               "Inconsistency: %S skipped, but dep %S is ok\n%!"
+                               v.version_name vdep.version_name;
+
+                             inconsistencies_detected := v :: !inconsistencies_detected;
+                          | _ -> ()
+                        with Not_found ->
+                          Printf.eprintf
+                            "CommandBuild Error: build dep %S of %S does not exist !!\n%!"
+                                         dep v.version_name
+                      end
+
+                   | _ -> ()
+                 ) steps
+
+          ) p.package_versions;
+      ) c.packages;
+    match !inconsistencies_detected with
+    | versions when may_restart ->
+       Printf.eprintf "Restarting whole build !!!\n%!";
+       List.iter (fun v ->
+           let install_prefix =
+             v.version_cache_dir //
+               (Printf.sprintf "%s-%s-install"
+                               v.version_name st.sw.sw_name) in
+           let result_file = install_prefix ^ ".build" in
+           (try Sys.remove result_file with _ ->());
+         ) versions;
+       iter false
+    | _ ->
+
+       CheckReport.report st c stats;
+
+       let dump_file = st.dirs.report_dir //
+                         (Printf.sprintf "%s-%s-%s.dump"
+                                         c.timestamp_date
+                                         c.commit_name c.switch) in
+
+       CheckIO.save dump_file (c, stats);
+
+       (st, c, stats)
+
+
+  in
+  iter true
 
 let action args =
+  CheckTree.check_in_tree ();
+  CommandScan.check_env ();
   ignore (build_packages () :
             CheckTypes.state * CheckTypes.commit * CheckTypes.stats)

@@ -22,7 +22,13 @@
 open StringCompat
 open CheckTypes.OP
 
-let args = []
+let arg_replace_commit_tree = ref false
+
+let args = [
+    "--replace-commit-tree", Arg.Set arg_replace_commit_tree,
+    " Replace already existing commit tree";
+
+  ]
 
 let rec head_n n list =
   if n <= 0 then []
@@ -52,7 +58,7 @@ let find_most_recent_commits dir extension =
     ) files;
   head_n 6 (List.sort compare !found)
 
-let action dirs =
+let generate_json dirs =
 
   let extension = ".dump" in
   let switches = ref StringMap.empty in
@@ -119,8 +125,9 @@ let action dirs =
     List.rev !cs
   in
 
+  let replace_commit_tree = !arg_replace_commit_tree in
   let generate_json file cs =
-    CheckJson.of_commits file cs;
+    CheckJson.of_commits  ~replace_commit_tree file cs;
     Printf.eprintf "File %S generated\n%!" file
   in
   generate_json "opam-builder.json" main_cs;
@@ -139,4 +146,7 @@ let action dirs =
               "opam-builder.js";
               "opam-builder-ocamlpro-inria-irill.png";
             ];
+
   ()
+
+let action dirs = generate_json dirs

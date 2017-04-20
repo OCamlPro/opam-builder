@@ -80,6 +80,7 @@ open StringCompat
       mutable version_result : bool option;
       mutable version_build : build_file option;
       mutable version_log : string option;
+      mutable version_revdeps : version list;
     }
 
    and package = {

@@ -35,51 +35,51 @@ let args = [
     "--remote", Arg.String (fun s -> arg_remote := s),
     Printf.sprintf "REMOTE Watch remote REMOTE (default is %S)" !arg_remote;
   ]
+           @ CommandExport.args
+           @ CommandGc.args
 
-let last_commit_file = "last-commit.txt"
-let last_commit_cmd =
-  Printf.sprintf "git rev-parse --short HEAD > %s" last_commit_file
-
-let command cmd =
-  let exit = Sys.command cmd in
-  if exit <> 0 then begin
-    Printf.eprintf "Error: command failed with exit status %d:\n   %s\n%!"
-      exit cmd;
-    false
-  end else true
-
-let get_last_commit () =
-  if command last_commit_cmd then begin
-      let ic = open_in last_commit_file in
-      let commit = input_line ic in
-      close_in ic;
-      Sys.remove last_commit_file;
-      commit
-
-    end else "unknown"
-
-let action args =
+let watch f =
 
   let last_commit = ref "reboot" in
   while true do
     if
-      Printf.kprintf command "git checkout %s" !arg_branch &&
-        Printf.kprintf command "git pull %s %s" !arg_remote !arg_branch then
-      let commit = get_last_commit () in
+      Printf.kprintf CommandScan.command "git checkout %s" !arg_branch &&
+        Printf.kprintf CommandScan.command "git pull %s %s" !arg_remote !arg_branch then
+      let commit = CommandScan.get_last_commit () in
       if !last_commit <> commit then begin
 
-          (match !arg_on_commit with
-             [] -> ()
-           | args ->
-              let args = List.rev (commit :: args) in
-              let args = List.map (function
-                                     "SELF" -> Sys.argv.(0)
-                                   | s -> s) args in
-              ignore ( command (String.concat " " args) : bool );
-          );
+          f commit;
 
           last_commit := commit;
         end;
 
     Unix.sleep !arg_delay
   done
+
+let arg_old_export = ref false
+
+let action args =
+  match !arg_on_commit with
+    [] ->
+    CheckTree.check_in_tree ();
+    CommandScan.check_env ();
+
+    watch (fun commit ->
+        Printf.eprintf "Watch: re-building...\n%!";
+        if !arg_old_export then
+          CommandExport.generate_export_file ()
+        else
+          ignore (CommandBuild.build_packages () : _);
+
+        Printf.eprintf "Watch: GC...\n%!";
+        CommandGc.do_gc ()
+      )
+
+  | args ->
+     watch (fun commit ->
+         let args = List.rev (commit :: args) in
+         let args = List.map (function
+                                "SELF" -> Sys.argv.(0)
+                              | s -> s) args in
+         ignore ( CommandScan.command (String.concat " " args) : bool );
+       );

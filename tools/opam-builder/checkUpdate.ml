@@ -103,6 +103,7 @@ let new_version c dirs
     version_result = None;
     version_log = None;
     version_build = None;
+    version_revdeps = [];
     } in
   (*  Printf.eprintf "   NEW VERSION %s\n%!" version_name; *)
   version_package.package_versions <- StringMap.add version_name

@@ -40,6 +40,30 @@ let args = [
     " Do not upgrade opam repo to 2.0 (supposed already done)";
   ]
 
+
+let last_commit_file = "last-commit.txt"
+let last_commit_cmd =
+  Printf.sprintf "git rev-parse --short HEAD > %s" last_commit_file
+
+let command cmd =
+  let exit = Sys.command cmd in
+  if exit <> 0 then begin
+    Printf.eprintf "Error: command failed with exit status %d:\n   %s\n%!"
+      exit cmd;
+    false
+  end else true
+
+let get_last_commit () =
+  if command last_commit_cmd then begin
+      let ic = open_in last_commit_file in
+      let commit = input_line ic in
+      close_in ic;
+      Sys.remove last_commit_file;
+      commit
+
+    end else "unknown"
+
+
 let dirs =
   let repo_subdir = "2.0" in
   let current_dir = CheckTree.current_dir in
@@ -86,8 +110,6 @@ let init_switch switch =
 
 
 let init_repo () =
-  CheckTree.check_in_tree ();
-  check_env ();
 
   let switch = CheckTree.read_switch () in
 
@@ -97,10 +119,12 @@ let init_repo () =
 
   let st = init_switch switch in
   let commit = match !arg_commit with
-    | None -> CommandWatch.get_last_commit ()
+    | None -> get_last_commit ()
     | Some commit -> commit in
   let c = init_commit st commit in
   st, c
 
 let action args =
+  CheckTree.check_in_tree ();
+  check_env ();
   ignore (init_repo () : CheckTypes.state * CheckTypes.commit)
