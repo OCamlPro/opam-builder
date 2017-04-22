@@ -75,12 +75,12 @@ open StringCompat
 
       (* only available after weather *)
       mutable version_status : status option;
+      mutable version_revdeps : version list;
 
       (* only available after build *)
       mutable version_result : bool option;
       mutable version_build : build_file option;
       mutable version_log : string option;
-      mutable version_revdeps : version list;
     }
 
    and package = {

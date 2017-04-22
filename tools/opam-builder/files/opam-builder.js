@@ -61,10 +61,15 @@ var json_package_fields = [
 /* true: display table, false: display package */
 var show_table = true;
 
-var table_json = "opam-builder.json";
+var table_diff_mode = false;
+
+/*
+var table_json = "";
 var table_switch = "";
 var table_search = "";
-var table_diff_mode = false;
+
+var table_pos = 0;
+var table_size = 100;
 
 var package_json = "";
 
@@ -77,6 +82,8 @@ function object_of_state()
         table_switch: table_switch,
         table_search: table_search,
         table_diff_mode: table_diff_mode,
+        table_pos: table_pos;
+        table_size: table_size;
 
         package_json: package_json
     };
@@ -87,6 +94,8 @@ function history_update(){
                        null,
                        "opam-builder.html");
 }
+*/
+
 
 /* This function is used to display the initial page, after loading the page */
 
@@ -354,7 +363,7 @@ function swap_to_package(url)
 
 function swap_diff()
 {
-    diff_mode = !diff_mode;
+    table_diff_mode = !table_diff_mode;
     update_view();
 }
 
@@ -386,7 +395,7 @@ function update_view()
     }
 
     /* Update from diff */
-    if( diff_mode ){
+    if( table_diff_mode ){
         for(var i = first_row; i < table.rows.length; i++){
             var tr = table.rows[i];
             var class1 = tr.cells[1].className;

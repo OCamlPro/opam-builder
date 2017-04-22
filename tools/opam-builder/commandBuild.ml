@@ -78,20 +78,6 @@ let build_packages () =
                  (try Sys.remove tmp_file with _ -> ());
                  (try Sys.rename build_file tmp_file with _ -> ());
                  None);
-            match v.version_status with
-            | Some { s_status = Installable deps } ->
-               List.iter (fun (package, version) ->
-                   let dep = package ^ "." ^ version in
-                   try
-                     let vdep = StringMap.find dep c.versions in
-                     v.version_revdeps <- vdep :: v.version_revdeps
-                   with Not_found ->
-                     Printf.eprintf
-                       "CommandBuild Error: status dep %S of %S does not exist !!\n%!"
-                       dep v.version_name
-
-                 ) deps
-            | _ -> ()
           ) p.package_versions;
       ) c.packages;
 
@@ -163,6 +149,7 @@ after deleting the wrong result files. *)
                                           c.commit_name c.switch) in
 
         CheckIO.save dump_file (c, stats);
+        Printf.eprintf "Generated file %S\n%!" dump_file;
         (st, c, stats)
 
       end

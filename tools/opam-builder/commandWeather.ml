@@ -27,6 +27,7 @@
  *)
 
 open StringCompat (* for StringMap *)
+open CopamInstall.TYPES
 open CheckTypes
 open CheckTypes.OP
 
@@ -84,15 +85,35 @@ let init_opam () =
       StringMap.iter (fun _ v ->
           v.version_status <-
             Some (CheckCudf.status_of_files
-                    v.version_cache_dir v.version_name c.switch)
+                    v.version_cache_dir v.version_name c.switch);
+          match v.version_status with
+          | Some { s_status = Installable deps } ->
+             List.iter (fun (package, version) ->
+                 let dep = package ^ "." ^ version in
+                 try
+                   let vdep = StringMap.find dep c.versions in
+                   v.version_revdeps <- vdep :: v.version_revdeps
+                 with Not_found ->
+                   Printf.eprintf
+                     "CommandBuild Error: status dep %S of %S does not exist !!\n%!"
+                     dep v.version_name
+               ) deps
+          | Some _ ->
+             let log_file =
+              v.version_cache_dir //
+                (Printf.sprintf "%s-%s-solution.log"
+                                v.version_name st.sw.sw_name) in
+             v.version_log <-
+               (try Some (FileString.read_file log_file) with _ -> None);
+          | None -> ()
         ) p.package_versions;
     ) c.packages;
 
   let commit_file =
     st.dirs.report_dir //
       (Printf.sprintf "%s-%s-%s.weather"
-         c.timestamp_date
-         c.commit_name c.switch) in
+                      c.timestamp_date
+                      c.commit_name c.switch) in
 
   let stats = CheckStats.compute_stats st c in
 
