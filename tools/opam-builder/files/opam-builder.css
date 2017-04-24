@@ -17,8 +17,13 @@
     float:right;
 }
 .sub-banner{ height: 70px; }
+.index-table {
+    //    width: 100%;
+    float: left;
+}
 .packages-table {
-    width: 100%;
+    //    width: 100%;
+    float: right;
 }
 .package {
     width: 100%;

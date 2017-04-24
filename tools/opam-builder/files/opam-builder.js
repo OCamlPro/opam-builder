@@ -39,9 +39,21 @@ function clear_cache()
 
 /* Some constants, never change */
 
+var initial_json_url = "opam-builder.json";
 var version_col = 0;
 var switches_col = 1;
 var first_row = 3;
+
+
+var index_table_id = "id-index-table";
+var packages_table_id = "id-packages-table";
+var search_id = "id-search";
+var table_title_id = "id-table-title";
+var package_id = "id-package";
+var packages_id = "id-packages";
+var index_title_id = "id-index-title";
+var diff_mode_id = "id-diff-mode";
+var depends_id = "id-depends";
 
 /* fields that should be put without interpretation */
 var json_package_fields = [
@@ -58,219 +70,414 @@ var json_package_fields = [
 
 /* The state of the interface */
 
-/* true: display table, false: display package */
-var show_table = true;
+/* 0: display table, 1: display package */
+var show_table = -1;
 
-var table_diff_mode = false;
+var table_json_url = ""; // url of json file
+var table_json = {};     // content of json file
+var table_table = [];    // table extracted and filtered
+var table_index = [];
+var table_index_size = -1;
 
-/*
-var table_json = "";
-var table_switch = "";
-var table_search = "";
+var table_diff_mode = -1;
+var table_page = 0;       // position of displayed table
+var table_page_size = 200;    // min number of displayed entries
+var table_title = "";   // current displayed switch
+var table_search = "";   // global search
 
-var table_pos = 0;
-var table_size = 100;
-
-var package_json = "";
+var package_json_url = "";
 
 function object_of_state()
 {
     return {
         show_table: show_table,
         
-        table_json: table_json,
-        table_switch: table_switch,
-        table_search: table_search,
+        table_json_url: table_json_url,
         table_diff_mode: table_diff_mode,
-        table_pos: table_pos;
-        table_size: table_size;
+        table_page: table_page,
+        table_page_size: table_page_size,
+        table_title: table_title,
+        table_search: table_search,
 
-        package_json: package_json
+        package_json_url: package_json_url,
     };
 }
 
-function history_update(){
-    history.pushState( object_of_state(),
-                       null,
-                       "opam-builder.html");
-}
-*/
+/* Managemenet of history */
 
+function history_update( s ){
+    history.pushState( s, null, "opam-builder.html");
+}
+
+function history_init(e){
+    history.replaceState( e, null, "opam-builder.html");
+}
 
 /* This function is used to display the initial page, after loading the page */
 
+function initial_state()
+{
+    return {
+        show_table: 0,
+        
+        table_json_url: "opam-builder.json",
+        table_diff_mode: 0,
+        table_page: 0,
+        table_page_size: 200,
+        table_title: "All Switches",
+        table_search: "",
+
+        package_json_url: ""
+    };
+}
+
 function body_onload()
 {
-    var search = document.getElementById("search");
+    console.log("body_onload");
+    var search = document.getElementById(search_id);
     search.value = window.location.hash.substr(1);
 
-    search.onkeyup = update_view;
-    display_main_table();
+    search.onkeyup = function(){
+        var e = object_of_state();
+        update_view(e);
+    };
+    
+    var s = initial_state();
+    history_init( s );
+    update_view( s );
 }
 
 /* Manage history */
 
 window.addEventListener('popstate', function(e) {
     // e.state is equal to the data-attribute of the last image we clicked
-    if( e.state == null ){
-        console.log("popstate null !");
+    console.log("popstate !");
 
-        display_main_table();
+    var s = e.state;
+    if( s == null ){
+        s = object_of_state();
+        s.table_json_url = initial_json_url;
+    }
+    update_view( s );
+});
+
+
+function page_update_view( s )
+{
+    console.log("page_update_view");
+    history_update( s );
+    update_view( s );
+}
+
+function update_view( s )
+{
+    console.log("update_view");
+    if( ! (s.table_json_url === table_json_url) ){
+
+        download_json( s.table_json_url,
+                       function(json){
+                           table_json_url = s.table_json_url;
+                           table_json = json;
+                           table_table = []; /* force update */
+                           really_update_view( s );
+                       });
     } else {
-        console.log("popstate " + e.state.message);
-        if( e.state.table ){
-            console.log("popstate to TABLE");
-            if( e.state.switch_name == "" ){
-                display_main_table();
-            } else {
-                display_switch_table(e.state.switch_name);
+        really_update_view( s );
+    }
+}
+
+function update_table()
+{
+    console.log("update_table");
+    if( table_search === "" ){
+        table_table = table_json.packages;
+    } else {
+        var table_num = 0;
+        var p,v, i,j,k,pp,p_index,p_num;
+        var pattern = table_search.toUpperCase();
+        for(i=0; i < table_json.packages.length; i++){
+            p = table_json.packages[i];
+            p_index = -1;
+            for(j=0; j < p.v.length; j++){
+                v = p.v[j];
+                if( v.v.toUpperCase().indexOf(pattern) >= 0 ){
+                    if( p_index < 0 ){
+                        var name = p.p;
+                        pp = {};
+                        pp.p = name;
+                        pp.v = [];
+                        p_index = table_num;
+                        table_table[p_index] = pp;
+                        table_num++;
+                        p_num = 0;
+                    }
+                    pp.v[ p_num ] = v;
+                    p_num++;
+                }
             }
-            
-        } else {
-            console.log("popstate to PACKAGE");
-            swap_to_package_json(e.state.json);
         }
     }
-});
+}
+
+/* called when table_json_url is ok */
+function really_update_view( s )
+{
+    console.log("really_update_view");
+    if( ! (s.table_search === table_search) ){
+        table_search = s.table_search;
+        table_table = [];
+    }
+
+    if( table_table.length == 0 ) {
+        table_page = -1;
+        table_page_size = -1;
+        update_table();
+    }
+
+    if( s.table_page_size != table_page_size ){
+        table_page_size = s.table_page_size;
+        update_index();
+    }
+
+    if( s.table_page != table_page ){
+        table_page = s.table_page;
+        update_packages_rows();
+    }
+
+    if( ! (s.table_title === table_title) ){
+        table_title = s.table_title;
+        var title = document.getElementById(table_title_id);
+        title.innerHTML = table_title;
+    }
+
+    if( s.show_table != show_table ){
+        show_table = s.show_table;
+        var table = document.getElementById(packages_id);
+        var div = document.getElementById(package_id);
+        if( show_table == 0 ){
+            table.style.display = "";
+            div.style.display = "none";
+        } else {
+            table.style.display = "none";
+            div.style.display = "";
+        }
+    }
+    if( s.table_diff_mode != table_diff_mode ){
+        table_diff_mode = s.table_diff_mode;
+        var title = document.getElementById(diff_mode_id);
+        if( table_diff_mode == 1 ){
+            title.innerHTML = "(diff mode)";
+        } else {
+            title.innerHTML = "";
+        }
+        
+    }
+    if( show_table == 0 ){
+        update_local_view();
+    }
+    
+}
+
+function update_index()
+{
+    console.log("update_index");
+    table_index = [];
+    table_index_size = 0;
+
+    if( table_table.length > 0 ){
+        var i = 0;
+        var p = table_table[0];
+        var page_size = 0;
+        var index;
+        var new_index = function(){
+        index = {
+            index_page: 1,
+            index_name: p.p + " ... ",
+            index_long_name: p.p + " ... ",
+            index_begin: i,
+            index_end: i
+        };
+        table_index[table_index_size] = index;
+        table_index_size++;
+        page_size = p.v.length;
+    };
+    var flush_index = function(){
+        if( page_size >= table_page_size ){
+            index.index_long_name += table_table[index.index_end].p;
+            page_size = -1;
+        }
+    };
+    new_index();
+    for(i=1; i < table_table.length; i++){
+        flush_index();
+        p = table_table[i];
+        if( page_size < 0 ) new_index();
+        page_size += p.v.length;
+        index.index_end = i;
+    }
+    index.index_long_name += table_table[index.index_end].p;
+    }
+    
+    update_index_rows();
+}
+
+function update_index_rows()  
+{
+    console.log("update_index_rows");
+
+    var oldTable = document.getElementById(index_table_id),
+        newTable = oldTable.cloneNode(true),
+        tr, td;
+
+    clear_children(newTable);
+    if( table_index.length > 1){
+        for(var i=0; i < table_index.length; i++){
+            tr = document.createElement('tr');
+            td = document.createElement('td');
+            var text = document.createTextNode(
+                table_index[i].index_name);
+            var a = document.createElement("a");
+            a.appendChild(text);
+            td.appendChild(a);
+            a.href = "javascript:switch_to_page(" + i + ")";
+            tr.appendChild(td);
+            newTable.appendChild(tr);
+        }
+    }
+    oldTable.parentNode.replaceChild(newTable, oldTable);
+}
+
+function update_packages_rows()  
+{
+    console.log("update_packages_rows");
+    var oldTable = document.getElementById(packages_table_id),
+        newTable = oldTable.cloneNode(true),
+        tr, td;
+
+    var title = document.getElementById(index_title_id);
+    if( table_index.length > 0 ){
+        title.innerHTML = table_index[table_page].index_long_name;
+    } else {
+        title.innerHTML = "Global search gave no results for '" +
+            table_search + "'";
+    }
+    
+    clear_children(newTable);
+
+    // row of switches
+    tr = document.createElement('tr');
+    td = document.createElement('td');  tr.appendChild(td);
+    for(var i=0; i < table_json.commits.length; i++){
+        td = document.createElement('td');
+        var sw = table_json.switches[i];
+        var a = document.createElement("a");
+        var text = document.createTextNode(sw);
+        a.href = "javascript:switch_callback('" + sw + "')";
+        a.appendChild(text);
+        td.appendChild(a);
+        tr.appendChild(td);
+    }
+    newTable.appendChild(tr);
+    
+    // row of dates
+    tr = document.createElement('tr');
+    td = document.createElement('td');  tr.appendChild(td);
+    for(var i=0; i< table_json.dates.length; i++){
+        td = document.createElement('td');
+        var text = document.createTextNode(table_json.dates[i]);
+        td.appendChild(text);
+        tr.appendChild(td);
+    }
+    newTable.appendChild(tr);
+    
+    // row of commits
+    tr = document.createElement('tr');
+    td = document.createElement('td');  tr.appendChild(td);
+    for(var i=0; i < table_json.commits.length; i++){
+        td = document.createElement('td');
+        var text = document.createTextNode(table_json.commits[i]);
+        td.appendChild(text);
+        tr.appendChild(td);
+    }
+    newTable.appendChild(tr);
+    
+    /* first row now */
+    first_row = newTable.rows.length;
+
+    if( table_index.length > 0 ){
+    for(var i=table_index[table_page].index_begin;
+        i <= table_index[table_page].index_end;
+        i++){
+        var p = table_table[i];
+        
+        tr = document.createElement('tr');
+        td = document.createElement('td');
+        var text = document.createTextNode(p.p);
+        td.appendChild(text);
+        tr.appendChild(td);
+        td = document.createElement('td');  tr.appendChild(td);
+        newTable.appendChild(tr);
+        
+        for(var j=0; j < p.v.length; j++){
+            var v = p.v[j];
+            tr = document.createElement('tr');
+            
+            /* version */
+            td = document.createElement('td');
+            var text = document.createTextNode(v.v);
+            td.appendChild(text);
+            tr.appendChild(td);
+            
+            /* results per commit */
+            for(var k=0; k < v.r.length; k++){
+                td = document.createElement('td');
+                var a = get_version_link(v.r[k],
+                                         table_json.timestamps[k],
+                                         table_json.commits[k],
+                                         table_json.switches[k],
+                                         v.v);
+                td.appendChild(a);
+                td.className = v.r[k];
+                tr.appendChild(td);
+            }
+            newTable.appendChild(tr);
+        }
+    }
+    }
+    
+    oldTable.parentNode.replaceChild(newTable, oldTable);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 function switch_callback(sw)
 {
-    console.log("push history SWITCH " + sw);
-    history.pushState( {
-        message: "from switch_callback",
-        table: true,
-        switch_name: sw },
-                       null, "opam-builder.html");
-    display_switch_table(sw);
-}
-function display_switch_table(sw){
-    load_table("Switch " + sw,
-               "packages",
-               sw + ".json",
-               "main_callback" );
-}
-
-function main_callback()
-{
-    console.log("push history MAIN TABLE");
-    history.pushState( {
-        message: "from main_callback",
-        table: true,
-        switch_name: "" },
-                       null, "opam-builder.html");
-    display_main_table();
-}
-
-function display_main_table(){
-    load_table("All Switches",
-               "packages",
-               "opam-builder.json",
-               "switch_callback" );
-}
-
-function table_of_json(table_title, table_name, json, callback){
-        var oldTable = document.getElementById(table_name),
-            newTable = oldTable.cloneNode(true),
-            tr, td;
-
-        console.log("new json" + json.switches);
-
-        var title = document.getElementById("table_title");
-        title.innerHTML = table_title;
-
-    clear_children(newTable);
-        
-        // row of switches
-        tr = document.createElement('tr');
-        td = document.createElement('td');  tr.appendChild(td);
-        for(var i=0; i < json.commits.length; i++){
-            td = document.createElement('td');
-            var sw = json.switches[i];
-            var a = document.createElement("a");
-            var text = document.createTextNode(sw);
-            a.href = "javascript:" + callback + "('" + sw + "')";
-            a.appendChild(text);
-            td.appendChild(a);
-            tr.appendChild(td);
-        }
-        newTable.appendChild(tr);
-
-        // row of dates
-        tr = document.createElement('tr');
-        td = document.createElement('td');  tr.appendChild(td);
-        for(var i=0; i< json.dates.length; i++){
-            td = document.createElement('td');
-            var text = document.createTextNode(json.dates[i]);
-            td.appendChild(text);
-            tr.appendChild(td);
-        }
-        newTable.appendChild(tr);
-
-        // row of commits
-        tr = document.createElement('tr');
-        td = document.createElement('td');  tr.appendChild(td);
-        for(var i=0; i < json.commits.length; i++){
-            td = document.createElement('td');
-            var text = document.createTextNode(json.commits[i]);
-            td.appendChild(text);
-            tr.appendChild(td);
-        }
-        newTable.appendChild(tr);
-
-        /* first row now */
-        first_row = newTable.rows.length;
-        
-        for(var i=0; i < json.packages.length; i++){
-            var p = json.packages[i];
-            
-            tr = document.createElement('tr');
-            td = document.createElement('td');
-            var text = document.createTextNode(p.p);
-            td.appendChild(text);
-            tr.appendChild(td);
-            td = document.createElement('td');  tr.appendChild(td);
-            newTable.appendChild(tr);
-            
-            for(var j=0; j < p.v.length; j++){
-                var v = p.v[j];
-                tr = document.createElement('tr');
-
-                /* version */
-                td = document.createElement('td');
-                var text = document.createTextNode(v.v);
-                td.appendChild(text);
-                tr.appendChild(td);
-
-                /* results per commit */
-                for(var k=0; k < v.r.length; k++){
-                    td = document.createElement('td');
-                    var a = get_version_link(v.r[k],
-                                             json.timestamps[k],
-                                             json.commits[k],
-                                             json.switches[k],
-                                             v.v);
-                    td.appendChild(a);
-                    td.className = v.r[k];
-                    tr.appendChild(td);
-                }
-                newTable.appendChild(tr);
-            }
-            
-        }
-
-        oldTable.parentNode.replaceChild(newTable, oldTable);
-        newTable.style.display = "";
-        document.getElementById("package").style.display = "none";
-
-    update_view();
-}
-
-function update_main_table()
-{
-    clear_cache();
-    main_callback();
+    var s = object_of_state();
+    s.table_json_url = sw + ".json";
+    s.table_title = "Switch " + sw;
+    update_view( s );
 }
 
 function get_version_link(text,
@@ -291,47 +498,36 @@ function get_version_link(text,
     return a;
 }
 
-function load_table(table_title, table_name, url, callback){
-    download_json(url,
-                  function(json) {
-                      table_of_json(table_title, table_name, json, callback);
-                  });
-}
-
 function swap_displays()
 {
-    show_table = !show_table;
-    update_displays();
+    console.log("swap_displays");
+    var s = object_of_state();
+    s.show_table = 1 - show_table;
+    update_view( s );
 }
 
 function update_displays()
 {
-    var table = document.getElementById("packages");
-    var div = document.getElementById("package");
-    if( show_table ){
-        table.style.display = "";
-        div.style.display = "none";
-    } else {
-        table.style.display = "none";
-        div.style.display = "";
-    }
+    console.log("update_displays");
+    update_view( s );
 }
 
 function swap_to_package_json(json)
 {
+    console.log("swap_to_package_json");
     var div;
     
     array_iter(json_package_fields,
-                                 function(name){
-                                     div = document.getElementById(name);
-                                     div.innerHTML = json[name];
-                                 });
+               function(name){
+                   div = document.getElementById("id-" + name);
+                   div.innerHTML = json[name];
+               });
     
-    var depends = document.getElementById("depends");
+    var depends = document.getElementById(depends_id);
     clear_children(depends);
     array_iter(json.depends,
                function(version_name){
-                                     var li = document.createElement("li");
+                   var li = document.createElement("li");
                    li.appendChild(
                        get_version_link(
                            version_name,
@@ -342,12 +538,14 @@ function swap_to_package_json(json)
                    );
                    depends.appendChild(li);
                });
-    show_table = false;
-    update_displays();
+    var s = object_of_state();
+    s.show_table = 1;
+    update_view( s );
 }
 
 function swap_to_package(url)
 {
+    console.log("swap_to_package");
     download_json(url, function(json){
         console.log("push history PACKAGE" + json.version_name);
         history.pushState(
@@ -363,46 +561,52 @@ function swap_to_package(url)
 
 function swap_diff()
 {
-    table_diff_mode = !table_diff_mode;
-    update_view();
+    console.log("swap_diff");
+    var s = object_of_state();
+    s.table_diff_mode = 1 - s.table_diff_mode;
+    update_view( s );
 }
 
 function clear_search()
 {
-    var search = document.getElementById("search");
+    console.log("clear_search");
+    var search = document.getElementById(search_id);
     search.value = "";
-    update_view();
+    var s = object_of_state();
+    s.table_search = "";
+    update_view( s );
 }
 
-function update_view()
+function update_local_view()
 {
-    var table = document.getElementById("packages");
+    console.log("update_local_view");
+    var table = document.getElementById(packages_table_id);
     var display = [];
     for(var i = first_row; i < table.rows.length; i++){
         display[i] = true;
     }
 
     /* Update from search */
-    var search = document.getElementById("search");
+    var search = document.getElementById(search_id);
     var pattern = search.value.toUpperCase();
     for(var i = first_row; i < table.rows.length; i++){
         var tr = table.rows[i];
         var td = tr.cells[version_col].innerHTML;
-        if(td == "" || td.toUpperCase().indexOf(pattern) >= 0 ){
+        if(td === "" || td.toUpperCase().indexOf(pattern) >= 0 ){
         } else {
             display[i] = false;
         }
     }
 
     /* Update from diff */
-    if( table_diff_mode ){
+    if( table_diff_mode == 1 ){
         for(var i = first_row; i < table.rows.length; i++){
             var tr = table.rows[i];
             var class1 = tr.cells[1].className;
             var disp = false;
             for(var j=2; j<tr.cells.length; j++){
                 var class2 = tr.cells[j].className;
-                if( class1 != class2 ) disp = true;
+                if( ! (class1 === class2) ) disp = true;
             }
             if(!disp) display[i] = false;
         }
@@ -419,6 +623,12 @@ function update_view()
     
 }
 
+function switch_to_page(page)
+{
+    var s = object_of_state();
+    s.table_page = page;
+    update_view( s );
+}
 
 
 /* These functions are the ones appearing in opam-builder.html */
@@ -427,9 +637,12 @@ function button_clear_search()
 {
     clear_search();
 }
-function button_update_all_switches()
+function button_all_switches()
 {
-    update_main_table();
+    var s = object_of_state();
+    s.table_json_url = "opam-builder.json";
+    s.table_title = "All Switches";
+    update_view( s );
 }
 function button_swap_view_switches_package()
 {
@@ -442,6 +655,33 @@ function button_swap_diff_mode()
 function button_clear_cache()
 {
     clear_cache();
+}
+
+function button_page_next()
+{
+    if( table_page+1 < table_index.length ){
+        var s = object_of_state();
+        s.table_page = table_page+1;
+        update_view( s );
+    }
+}
+
+function button_page_prev()
+{
+    if( table_page > 0 ){
+        var s = object_of_state();
+        s.table_page = table_page-1;
+        update_view( s );
+    }
+}
+
+function button_global_search()
+{
+    var s = object_of_state();
+    var search = document.getElementById(search_id);
+    s.table_search = search.value;
+    s.table_page = 0;
+    update_view( s );
 }
 
 /* Generic functions */
@@ -457,3 +697,4 @@ function clear_children(t){
         t.removeChild(t.lastChild);
     }
 }
+

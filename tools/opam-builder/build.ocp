@@ -69,6 +69,7 @@ begin
     ]
 end
 
+(*
 begin
   program "opam-builder";
 
@@ -76,9 +77,10 @@ begin
 
   requires = [ "opam-builder-lib"]
 end
+ *)
 
 begin
-  program "opam-builder2";
+  program "opam-builder";
 
   files = [
       "checkFiles.ml" (file2string = [
