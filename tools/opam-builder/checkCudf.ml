@@ -109,12 +109,11 @@ let check_installability state checksum version_dir version_name =
              match ! (sw.sw_cudf.cudf_backup) with
              | None -> raise Not_found
              | Some cudf ->
-                let open WeatherTypes in
                 Printf.eprintf "  checking whole universe with DOSE...\n%!";
 
                 let cudf_file = Filename.temp_file "cudf" ".cudf" in
                 CopamCudf.write_file cudf_file cudf;
-                let universe = WeatherDiag.load_cudf_universe cudf_file in
+                let universe = CheckDose.load_cudf_universe cudf_file in
                 sw.sw_cudf.known_universe <- Some universe;
                 let callback diag =
                   let open Algo.Diagnostic in
@@ -144,17 +143,22 @@ let check_installability state checksum version_dir version_name =
                 (* The unavailable packages must be absent to perform
      the checks, but we re-add dummy versions now for easier lookups
      during reports generation. *)
-                WeatherDiag.add_unav_packages universe cudf_file;
+                CheckDose.add_unav_packages universe cudf_file;
                 universe
         in
         let (package,reasons) = Hashtbl.find sw.sw_cudf.solver_cache version_name in
         Printf.eprintf "  %s is in cache, not installable...\n%!"
                        version_name;
-        let reasons = WeatherReasons.string_of_reasons
+        let not_available, reasons = CheckDose.string_of_reasons
                         (fun name -> name)
                         package universe reasons in
         FileString.write_file log_file reasons;
-        FileString.write_file deps_file "no-solution";
+        FileString.write_file deps_file
+                              (deps_of_status
+                                 (if not_available then
+                                    NotAvailable
+                                  else
+                                    NotInstallable))
       with Not_found ->
         Printf.eprintf "  %s not in cache, should be installable...\n%!"
                        version_name;

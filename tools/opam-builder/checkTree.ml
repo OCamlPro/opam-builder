@@ -82,8 +82,8 @@ let parse_build_lines msg lines =
           [ "depends"; depends ] ::
             [ "depopts"; depopts ] ::
               lines ->
-       let build_report_depends = OcpString.split depends ',' in
-       let build_report_depopts = OcpString.split depopts ',' in
+       let build_report_depends = OcpString.split_simplify depends ',' in
+       let build_report_depopts = OcpString.split_simplify depopts ',' in
        let action = {
            build_report_begin_time;
            build_report_hash;

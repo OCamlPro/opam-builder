@@ -44,8 +44,8 @@ open StringCompat
 
    and build_result =
      | ActionReused
-     | ActionFailed of string
-     | ActionInstalled of string
+     | ActionFailed of string (* duration *)
+     | ActionInstalled of string (* duration *)
      | ActionUnknown
 
    and build_snap_errors =

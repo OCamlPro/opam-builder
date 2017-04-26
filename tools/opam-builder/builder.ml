@@ -224,4 +224,14 @@ let () =
                  ]
                  CommandWatch.action;
 
+  Subcommand.add "api"
+                 CommandApi.args
+                 true
+                 "Scan a switch for generated API files"
+                 [ "opam-builder api [arguments]";
+                   "";
+                   "  Scan a switch for generated API files.";
+                 ]
+                 CommandApi.action;
+
   Subcommand.parse [ "opam-builder SUBCOMMAND [arguments]" ]

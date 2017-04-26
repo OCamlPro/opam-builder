@@ -39,6 +39,8 @@ begin
     "checkHtml.ml";
     "checkStats.ml";
 
+    "checkDose.ml";
+
     (* Read a commit on disk and check what has changed, no action *)
     "checkUpdate.ml";
 
@@ -58,6 +60,8 @@ begin
 
     (* Import generated files and create web pages *)
     "checkImport.ml";
+
+
   ];
 
   requires = [
@@ -65,7 +69,8 @@ begin
     "ocplib-copam";
     string_compat;
     "ocplib-json";
-    "opam-weather-lib";
+    "dose3.common" "dose3.algo" "unix" "dose3.debian"
+                                        "ocplib-compat"
     ]
 end
 
@@ -102,6 +107,7 @@ begin
       "commandImport.ml";
       "commandSwitch.ml";
       "commandJson.ml";
+      "commandApi.ml";
       "builder.ml" ];
 
   requires = [ "opam-builder-lib"]
