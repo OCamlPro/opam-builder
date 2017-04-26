@@ -20,6 +20,7 @@
 (**************************************************************************)
 
 open StringCompat
+open ApiTypes
 open CheckTypes
 open CheckTypes.OP
 
@@ -30,12 +31,6 @@ let args = [
     " Extract files into builder.files";
   ]
 
-
-type info = {
-    nv : string;
-    r : build_report;
-    kind : string;
-  }
 
 let extract_files files_dir c =
 
@@ -53,7 +48,7 @@ let extract_files files_dir c =
                    Printf.eprintf "depopt: %S\n%!" dep) depopts; *)
             String.concat "+" (nv :: depopts)
        in
-       let dir = files_dir // (name ^ "-" ^ kind) in
+       let dir = files_dir // name in
        let p,_ = OcpString.cut_at nv '.' in
        let archive =
          CheckTree.cache_dir_fullname //
@@ -66,29 +61,33 @@ let extract_files files_dir c =
        if not (Sys.file_exists archive) then
          Printf.eprintf "Missing archive %s\n%!" archive
        else
-         if not (Sys.file_exists dir) then begin
-             Unix.mkdir dir 0o755;
+         if not (Sys.file_exists dir) then
+           Unix.mkdir dir 0o755;
 
-             Printf.eprintf "Generating %s\n%!" dir;
-             Sys.chdir dir;
+       Printf.eprintf "Generating %s\n%!" dir;
+       Sys.chdir dir;
 
-             let cmd = Printf.sprintf "tar zxf %s" archive in
-             let ret =  Sys.command cmd in
+       let cmd = Printf.sprintf "tar zxf %s" archive in
+       let ret =  Sys.command cmd in
 
-             if ret <> 0 then begin
-                 Printf.eprintf "Command %S failed with error %d\n%!"
-                                cmd ret;
-               end;
+       if ret <> 0 then begin
+           Printf.eprintf "Command %S failed with error %d\n%!"
+                          cmd ret;
+         end;
 
-             Sys.chdir CheckTree.current_dir;
+       let (_: int) = Sys.command "rm -rf .opam-switch" in
 
+       Sys.chdir CheckTree.current_dir;
 
-             let oc = open_out (dir // "INFO") in
-             output_value oc { nv; r; kind };
-             close_out oc;
+       let (info : ApiTypes.new_file_INFO) = {
+           info_nv = nv;
+           info_depends = r.build_report_depends;
+           info_depopts = r.build_report_depopts;
+         } in
+       let oc = open_out_bin (dir // "INFO") in
+       output_value oc info;
+       close_out oc;
 
-
-           end
     | _ -> ()
   in
   StringMap.iter (fun _ v ->
@@ -133,8 +132,8 @@ let objinfo_files files_dir =
   Array.iter (fun dir ->
       let dir = files_dir // dir in
       let info_file = dir // "INFO" in
-      let ic = open_in info_file in
-      let ( info : info ) = input_value ic in
+      let ic = open_in_bin info_file in
+      let ( _info : ApiTypes.new_file_INFO ) = input_value ic in
       close_in ic;
 
       let register_file file kind =

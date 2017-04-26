@@ -85,6 +85,13 @@ end
  *)
 
 begin
+  library "opam-builder-api-types";
+
+  files = [ "apiTypes.ml"  ];
+  requires = [ "ocplib-compat" ];
+end
+
+begin
   program "opam-builder";
 
   files = [
@@ -110,5 +117,21 @@ begin
       "commandApi.ml";
       "builder.ml" ];
 
-  requires = [ "opam-builder-lib"]
+  requires = [
+      "opam-builder-api-types";
+      "opam-builder-lib";
+    ]
+end
+
+begin
+  program "opam-builder-api";
+
+  pp = ocp_pp;
+  files = [ "apiMain.ml" ];
+  requires = [
+      "opam-builder-lib";
+      "compiler-libs.common";
+      "opam-builder-api-types"
+    ];
+
 end

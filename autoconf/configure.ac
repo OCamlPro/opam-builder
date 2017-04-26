@@ -131,6 +131,10 @@ AC_CHECK_OCAML_PKG(ocplib-file)
 if test "$OCAML_PKG_ocplib_file" = "no"; then
    AC_MSG_ERROR([Please install OCaml package 'ocplib-file'.])
 fi
+AC_CHECK_OCAML_PKG(dose3)
+if test "$OCAML_PKG_dose3" = "no"; then
+   AC_MSG_ERROR([Please install OCaml package 'dose3'.])
+fi
 OPAM_REPO=
 OPAM_REPO_OFFICIAL_REMOTE=
 OPAM_REPO_FORK_REMOTE=

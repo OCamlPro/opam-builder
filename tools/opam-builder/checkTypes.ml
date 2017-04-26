@@ -170,6 +170,12 @@ open StringCompat
       stats_error_packages : int;
     }
 
+type file_INFO = {
+    nv : string;
+    r : build_report;
+    kind : string;
+  }
+
 module OP = struct
   let (//) = Filename.concat
 end

@@ -22,6 +22,7 @@ install: [
 remove: [
 ]
 depends: [
+     "dose3"
      "jsonm"
      "ocamlfind"
      "ocp-build" {>= "1.99.17-beta" }
