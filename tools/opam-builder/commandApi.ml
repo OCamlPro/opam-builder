@@ -79,13 +79,13 @@ let extract_files files_dir c =
 
        Sys.chdir CheckTree.current_dir;
 
-       let (info : ApiTypes.new_file_INFO) = {
+       let info = {
            info_nv = nv;
            info_depends = r.build_report_depends;
            info_depopts = r.build_report_depopts;
          } in
        let oc = open_out_bin (dir // "INFO") in
-       output_value oc info;
+       output_value oc (info : ApiTypes.new_file_INFO);
        close_out oc;
 
     | _ -> ()

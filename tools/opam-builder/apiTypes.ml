@@ -1,7 +1,29 @@
+(**************************************************************************)
+(*                                                                        *)
+(*              OCamlPro-Inria-Irill Attribution AGPL                     *)
+(*                                                                        *)
+(*   Copyright OCamlPro-Inria-Irill 2011-2016. All rights reserved.       *)
+(*   This file is distributed under the terms of the AGPL v3.0            *)
+(*   (GNU Affero General Public Licence version 3.0) with                 *)
+(*   a special OCamlPro-Inria-Irill attribution exception.                *)
+(*                                                                        *)
+(*     Contact: <typerex@ocamlpro.com> (http://www.ocamlpro.com/)         *)
+(*                                                                        *)
+(*  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,       *)
+(*  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES       *)
+(*  OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND              *)
+(*  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS   *)
+(*  BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN    *)
+(*  ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN     *)
+(*  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE      *)
+(*  SOFTWARE.                                                             *)
+(**************************************************************************)
 
 open StringCompat
 
 type database = {
+    date : string;
+    switch : string;
     mutable packages : package StringMap.t;
     mutable intf_by_hash : intf_unit StringMap.t;
     mutable asm_by_hash : asm_unit StringMap.t;
@@ -56,7 +78,7 @@ type database = {
      byte_modname : string;
      byte_hash : string;
      byte_intf : intf_unit; (* implements this cmi *)
-     byte_deps : intf_unit list; (* depends on these interfaces *)
+     byte_deps : (string * intf_unit option) list; (* depends on these interfaces *)
      mutable byte_cmos : cmo_file list;
      mutable byte_cmas : cma_file list;
    }
@@ -64,9 +86,9 @@ type database = {
  and asm_unit = {
      asm_modname : string;
      asm_hash : string;
-     asm_intf : intf_unit;
-     asm_intf_deps : (string * intf_unit option) list;
-     asm_asm_deps : asm_unit list;
+     mutable asm_intf : intf_unit option;
+     mutable asm_intf_deps : (string * intf_unit option) list;
+     mutable asm_asm_deps : (string * asm_unit option) list;
      mutable asm_cmxs : cmx_file list;
      mutable asm_cmxas : cmxa_file list;
    }
@@ -106,6 +128,9 @@ type database = {
              * (string * string) list (* list of constructors or labels *)
    | Module of string * module_desc option
 
+
+(* This file format is used to exchange information between
+opam-builder and opam-builder-api. *)
 type new_file_INFO = {
     info_nv : string;
     info_depends : string list;

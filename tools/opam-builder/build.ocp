@@ -124,14 +124,23 @@ begin
 end
 
 begin
-  program "opam-builder-api";
+  program "opam-builder-api"; (* generates the database... *)
 
   pp = ocp_pp;
   files = [ "apiMain.ml" ];
   requires = [
-      "opam-builder-lib";
+      "ocplib-lang"; "unix";
       "compiler-libs.common";
       "opam-builder-api-types"
     ];
+
+end
+
+begin program "opam-api"; (* query the database... *)
+
+      files = [ "apiQuery.ml" ];
+      requires = [
+          "ocplib-compat"; "ocplib-lang";
+          "opam-builder-api-types" ];
 
 end

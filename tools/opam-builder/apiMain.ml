@@ -26,6 +26,19 @@ open ApiTypes.OP
 open Asttypes
 open Types
 
+(* Move this in somewhere generic... *)
+let with_ic filename f =
+  let ic = open_in_bin filename in
+  try
+    let res = f ic in
+    close_in ic;
+    res
+  with exn ->
+       close_in ic;
+       raise exn
+
+
+
 let string_of f sign =
   f Format.str_formatter sign;
   Format.flush_str_formatter ()
@@ -60,7 +73,7 @@ let rec module_desc sign =
          in
          items := (Ident.name mid,
                    Module (s, mod_desc))
-                   :: !items
+                  :: !items
       | Sig_type (id, type_decl, rec_status) ->
          let s = string_of (Printtyp.type_declaration id) type_decl in
          let decls = ref [] in
@@ -92,68 +105,19 @@ let rec module_desc sign =
          items := (Ident.name id,
                    Type (s, !decls)) :: !items
 
-(*
-#endif
-      let mod_ty =
-#if OCAML_VERSION < "4.02"
-        mod_decl
-#else
+      | Sig_typext (id, ext, _) ->
+         let s = string_of (Printtyp.extension_constructor id) ext in
+         let decls = ref [] in
+         let cd_args = string_of_variant ext.ext_args in
+         decls := (Ident.name id, cd_args) :: !decls;
+         items := (Ident.name id,
+                   Type (s, !decls)) :: !items
 
-#endif
-      in
-      save_item package (Ident.name mid :: path)
-        ();
-      begin
-        match mod_ty with
-#if OCAML_VERSION < "4.00"
-      | Tmty_ident _
-      | Tmty_functor _
-#elif OCAML_VERSION < "4.02"
-      | Mty_ident _
-      | Mty_functor _
-#else
-      | Mty_alias _
-      | Mty_ident _
-      | Mty_functor _
 
-#endif
-          -> ()
-#if OCAML_VERSION < "4.00"
-        | Tmty_signature sig_items ->
-#else
-        | Mty_signature sig_items ->
-#endif
-          let path = Ident.name mid :: path in
-          List.iter (iter_item path) sig_items
-      end
-
-#if OCAML_VERSION < "4.00"
-   | Tsig_type (id, type_decl, rec_status) ->
-#else
-   | Sig_type (id, type_decl, rec_status) ->
-#endif
-      save_item package (Printf.sprintf "type-%s" (Ident.name id) :: path)
-        (string_of (Printtyp.type_declaration id) type_decl)
-
-#if OCAML_VERSION < "4.00"
-    | Tsig_class _
-#elif OCAML_VERSION < "4.02"
-    | Sig_class _
-    | Sig_class_type _
-    | Sig_exception (_, _)
-    | Sig_modtype (_, _)
-#else
-    | Sig_class _
-    | Sig_class_type _
-    | Sig_typext _
-    | Sig_modtype (_, _)
-#endif
-      -> ()
-  in
- *)
-
-                   | _ -> ()
-                  ) sign;
+      | Sig_modtype _
+        | Sig_class _
+        | Sig_class_type _ -> ()
+    ) sign;
 
   List.rev !items
 
@@ -174,12 +138,11 @@ let find_intf d intf_modname intf_hash =
     d.intf_by_hash <- StringMap.add intf_hash u d.intf_by_hash;
     u
 
-let rec intf_api sigitems =
-  module_desc sigitems
+let modname_of filename =
+  String.capitalize (Filename.chop_extension (Filename.basename filename))
 
 let cmi_of_file d file filename =
-  let intf_modname =
-    String.capitalize (Filename.chop_extension (Filename.basename filename)) in
+  let intf_modname = modname_of filename in
 #if OCAML_VERSION >= "4.00"
   let {
     Cmi_format.cmi_name;
@@ -188,6 +151,7 @@ let cmi_of_file d file filename =
     cmi_flags;
   } = Cmi_format.read_cmi filename in
 #else
+#error "Not compatible with this version of OCaml"
 #endif
   let intf_hash, cmi_deps = match cmi_crcs with
     | (_, Some hash) :: deps -> hash, deps
@@ -207,7 +171,7 @@ let cmi_of_file d file filename =
                ) cmi_deps;
            cmi_intf.intf_api <- Some (
                                     string_of_signature cmi_sign,
-                                    intf_api cmi_sign);
+                                    module_desc cmi_sign);
         | _ -> ()
       end;
       let cmi_file = {
@@ -216,20 +180,222 @@ let cmi_of_file d file filename =
         } in
       cmi_intf.intf_cmis <- cmi_file :: cmi_intf.intf_cmis;
       CMI cmi_file
+  ;;
+
+let find_byte d cu =
+  let byte_hash = Digest.string (Marshal.to_string cu []) in
+  try
+    StringMap.find byte_hash d.byte_by_hash
+  with Not_found ->
+    let byte_modname = cu.Cmo_format.cu_name in
+    let byte_intf = ref "" in
+    let byte_deps = ref [] in
+    List.iter (fun (modname, digesto) ->
+        if modname = byte_modname then
+          match digesto with
+          | None -> assert false
+          | Some digest -> byte_intf := digest
+        else
+          byte_deps := (modname,
+                        match digesto with
+                        | None -> None
+                        | Some digest ->
+                           Some (find_intf d modname digest)
+                       ) :: !byte_deps;
+      ) cu.Cmo_format.cu_imports;
+    let byte_intf = find_intf d byte_modname !byte_intf in
+    let byte = {
+        byte_modname;
+        byte_hash;
+        byte_deps = !byte_deps;
+        byte_intf;
+        byte_cmos = [];
+        byte_cmas = [];
+      } in
+    byte_intf.intf_byte <- byte :: byte_intf.intf_byte;
+    d.byte_by_hash <- StringMap.add byte_hash byte d.byte_by_hash;
+    byte
+;;
+
+let find_asm d asm_modname asm_hash =
+  try
+    StringMap.find asm_hash d.asm_by_hash
+  with Not_found ->
+       let asm = {
+           asm_modname;
+           asm_hash;
+           asm_intf_deps = [];
+           asm_asm_deps = [];
+           asm_cmxs = [];
+           asm_cmxas = [];
+           asm_intf = None;
+         } in
+       d.asm_by_hash <- StringMap.add asm_hash asm d.asm_by_hash;
+       asm
+
+let find_asm d cu asm_hash =
+  let asm_modname = cu.Cmx_format.ui_name in
+  let asm = find_asm d asm_modname asm_hash in
+  begin
+    match asm.asm_intf with
+    | Some _ -> ()
+    | None ->
+
+       List.iter (fun (modname, digesto) ->
+           if modname = asm_modname then
+             match digesto with
+             | None -> assert false
+             | Some digest -> assert (asm_hash = digest)
+           else
+             asm.asm_asm_deps <- (modname,
+                              match digesto with
+                                None -> None
+                              | Some digest ->
+                                 Some (find_asm d modname digest)) ::
+                                   asm.asm_asm_deps;
+         ) cu.Cmx_format.ui_imports_cmx;
+
+       List.iter (fun (modname, digesto) ->
+           if modname = asm_modname then
+             match digesto with
+             | None -> assert false
+             | Some digest ->
+                let unit = find_intf d asm_modname digest in
+                asm.asm_intf <- Some unit;
+                unit.intf_asm <- asm :: unit.intf_asm
+           else
+             asm.asm_intf_deps <- (modname,
+                              match digesto with
+                                None -> None
+                              | Some digest ->
+                                 Some (find_intf d modname digest)) ::
+                                   asm.asm_intf_deps;
+         ) cu.Cmx_format.ui_imports_cmi;
+
+       assert (asm.asm_intf <> None);
+  end;
+  asm
+
+let cmx_of_file d cmx_file filename =
+  let cu, crc =
+    with_ic filename (fun ic ->
+              let len_magic_number = String.length Config.cmx_magic_number in
+              let magic_number = really_input_string ic len_magic_number in
+              if magic_number = Config.cmx_magic_number then
+                let cu = (input_value ic : Cmx_format.unit_infos) in
+                let crc = Digest.input ic in
+                (cu, crc)
+              else failwith "cmo_of_file: bad magic"
+            )
+  in
+  let cmx_unit = find_asm d cu crc in
+  let cmx_file = { cmx_file; cmx_unit } in
+  cmx_unit.asm_cmxs <- cmx_file :: cmx_unit.asm_cmxs;
+  CMX cmx_file
+  ;;
+
+let cmxa_of_file d cmxa_file filename =
+  let lib =
+    with_ic filename (fun ic ->
+              let len_magic_number = String.length Config.cmxa_magic_number in
+              let magic_number = really_input_string ic len_magic_number in
+              if magic_number = Config.cmxa_magic_number then
+                let lib = (input_value ic : Cmx_format.library_infos) in
+                lib
+              else failwith "cmo_of_file: bad magic")
+  in
+  let cmxa_units = List.map (fun (cu, crc) ->
+                       find_asm d cu crc) lib.Cmx_format.lib_units in
+  let cmxa_file = { cmxa_file; cmxa_units } in
+  List.iter (fun cmx_unit ->
+      cmx_unit.asm_cmxas <- cmxa_file :: cmx_unit.asm_cmxas;
+    ) cmxa_units;
+  CMXA cmxa_file
+  ;;
+
+
+let cmo_of_file d cmo_file filename =
+  let cu =
+    with_ic filename (fun ic ->
+              let len_magic_number = String.length Config.cmo_magic_number in
+              let magic_number = really_input_string ic len_magic_number in
+              if magic_number = Config.cmo_magic_number then
+                let cu_pos = input_binary_int ic in
+                seek_in ic cu_pos;
+                let cu = (input_value ic : Cmo_format.compilation_unit) in
+                cu
+              else failwith "cmo_of_file: bad magic")
+  in
+  let cmo_unit = find_byte d cu in
+  let cmo_file = { cmo_file; cmo_unit } in
+  cmo_unit.byte_cmos <- cmo_file :: cmo_unit.byte_cmos;
+  CMO cmo_file
+  ;;
+
+(* primes.1.3.*: the .cma file is actually an executable !! *)
+
+let cma_of_file d cma_file filename =
+  let lib =
+    with_ic filename (fun ic ->
+              let len_magic_number = String.length Config.cma_magic_number in
+              let magic_number = really_input_string ic len_magic_number in
+              if magic_number = Config.cma_magic_number then
+                let toc_pos = input_binary_int ic in
+                seek_in ic toc_pos;
+                let lib = (input_value ic : Cmo_format.library) in
+                lib
+              else failwith "cma_of_file: bad magic")
+  in
+  let cma_units = List.map (find_byte d) lib.Cmo_format.lib_units in
+  let cma_file = { cma_file; cma_units } in
+  List.iter (fun unit ->
+      unit.byte_cmas <- cma_file :: unit.byte_cmas
+    ) cma_units;
+  CMA cma_file
+;;
 
 let file_of_file d file filename =
-  if Filename.check_suffix filename ".cmi" then
-    cmi_of_file d file filename
-  else
+  try
+    if Filename.check_suffix filename ".cmi" then
+      cmi_of_file d file filename
+    else
+      if Filename.check_suffix filename ".cmo" then
+        cmo_of_file d file filename
+      else
+        if Filename.check_suffix filename ".cma" then
+          cma_of_file d file filename
+        else
+        if Filename.check_suffix filename ".cmx" then
+          cmx_of_file d file filename
+        else
+        if Filename.check_suffix filename ".cmxa" then
+          cmxa_of_file d file filename
+        else
+          FILE
+  with exn ->
+    Printf.eprintf "Exception %s with %S\n%!"
+                   (Printexc.to_string exn) filename;
     FILE
-
+;;
 
 let () =
 
   let dir = "builder.files" in
   let files = Sys.readdir dir in
 
+  let date =
+    let tm = Unix.gmtime (Unix.gettimeofday ()) in
+    Printf.sprintf "%d-%d-%d"
+                   (1900+tm.Unix.tm_year)
+                   (1+tm.Unix.tm_mon)
+                   tm.Unix.tm_mday
+  in
+
+  let switch = with_ic "builder.switch" (fun ic ->
+                         input_line ic) in
+
   let d = {
+      date; switch;
       packages = StringMap.empty;
       intf_by_hash = StringMap.empty;
       asm_by_hash = StringMap.empty;
@@ -273,33 +439,39 @@ let () =
           Array.iter (fun basename ->
               let filename = dir // basename in
               let revpath = basename :: revpath in
-              let file = {
-                  revpath;
-                  file_kind = Dir [];
-                  file_package = v;
-                } in
-              list := (basename, file) :: !list;
-              try
-                let st = Unix.lstat filename in
-                match st.Unix.st_kind with
-                | Unix.S_DIR ->
-                   file.file_kind <- Dir (iter_files revpath filename)
-                | Unix.S_REG ->
-                   let file_type =
-                     match file_of_file d file filename with
-                     | FILE when 0o111 land st.Unix.st_perm <> 0 ->
-                        EXEC
-                     | file -> file
+              match revpath with
+              | [ "INFO" ]
+                | [ "ld.d";"ocaml";"lib"] ->
+                 (* remove opam-builder artefacts *)
+                 ()
+              | _ ->
+                 let file = {
+                     revpath;
+                     file_kind = Dir [];
+                     file_package = v;
+                   } in
+                 list := (basename, file) :: !list;
+                 try
+                   let st = Unix.lstat filename in
+                   match st.Unix.st_kind with
+                   | Unix.S_DIR ->
+                      file.file_kind <- Dir (iter_files revpath filename)
+                   | Unix.S_REG ->
+                      let file_type =
+                        match file_of_file d file filename with
+                        | FILE when 0o111 land st.Unix.st_perm <> 0 ->
+                           EXEC
+                        | file -> file
 
-                   in
-                   file.file_kind <- File (file_type, st.Unix.st_size)
-                | _ ->
-                   file.file_kind <- File (FILE, st.Unix.st_size)
-              with exn ->
-                Printf.eprintf "%s raised %s\n%!" filename
-                   (Printexc.to_string exn);
+                      in
+                      file.file_kind <- File (file_type, st.Unix.st_size)
+                   | _ ->
+                      file.file_kind <- File (FILE, st.Unix.st_size)
+                 with exn ->
+                   Printf.eprintf "%s raised %s\n%!" filename
+                                  (Printexc.to_string exn);
 
-                ()
+                   ()
             ) files;
           List.rev !list
         in
@@ -308,224 +480,6 @@ let () =
     ) files;
 
   let oc = open_out "builder.database" in
+  output_value oc 1; (* version 1 *)
   output_value oc d;
   close_out oc
-
-
-
-
-            (*
-(*
-
-  Naming conventions for short variables:
-  * p : the package
-  * v : the version of the package p (often p.package_version)
-  * c : the commit
-  * st : the state
-  * dirs : the directories (often st.dirs)
-  *)
-
-open CheckTypes
-open StringCompat
-open CopamInstall
-
-open Types
-
-let api_dir = ref "api"
-let check_api_dir = ref true
-
-let save_item package path content =
-  if !check_api_dir then begin
-    check_api_dir := false;
-    if not (Sys.file_exists !api_dir) then
-      Unix.mkdir !api_dir 0o755;
-  end;
-  let full_path = List.rev path in
-  let rec iter api_dir path =
-    match path with
-    | [] ->
-      let api_file = Filename.concat api_dir ("@" ^ package ^ ".txt") in
-      let oc = open_out api_file in
-      Printf.fprintf oc "%s defines %s as:\n%s\n" package
-        (String.concat "." full_path) content;
-      close_out oc;
-    | id :: path ->
-      match id.[0] with
-      | 'a'..'z' | 'A'..'Z' ->
-        let api_dir = Filename.concat api_dir id in
-        if not (Sys.file_exists api_dir) then
-          Unix.mkdir api_dir 0o755;
-        iter api_dir path
-      | _ -> ()
-  in
-  iter !api_dir full_path
-
-let print_value package path ty =
-  let ty = string_of_type ty in
-  save_item package path ty
-
-let parse_cmi package cmi_file =
-  let modname =
-    String.capitalize (Filename.chop_extension (Filename.basename cmi_file)) in
-#if OCAML_VERSION >= "4.00"
-  let {
-    Cmi_format.cmi_name;
-    cmi_sign;
-    cmi_crcs;
-    cmi_flags;
-  } = Cmi_format.read_cmi cmi_file in
-#else
-  let cmi_sign = Env.read_signature modname cmi_file in
-#endif
-let rec iter_item path = function
-#if OCAML_VERSION < "4.00"
-    | Tsig_value (id, val_desc) ->
-#else
-    | Sig_value (id, val_desc) ->
-#endif
-      print_value package (Ident.name id :: path) val_desc.val_type
-#if OCAML_VERSION < "4.00"
-    | Tsig_module (mid, mod_decl, rec_status) ->
-#else
-    | Sig_module (mid, mod_decl, rec_status) ->
-#endif
-      let mod_ty =
-#if OCAML_VERSION < "4.02"
-        mod_decl
-#else
-        mod_decl.md_type
-#endif
-      in
-      save_item package (Ident.name mid :: path)
-        (string_of Printtyp.modtype mod_ty);
-      begin
-        match mod_ty with
-#if OCAML_VERSION < "4.00"
-      | Tmty_ident _
-      | Tmty_functor _
-#elif OCAML_VERSION < "4.02"
-      | Mty_ident _
-      | Mty_functor _
-#else
-      | Mty_alias _
-      | Mty_ident _
-      | Mty_functor _
-
-#endif
-          -> ()
-#if OCAML_VERSION < "4.00"
-        | Tmty_signature sig_items ->
-#else
-        | Mty_signature sig_items ->
-#endif
-          let path = Ident.name mid :: path in
-          List.iter (iter_item path) sig_items
-      end
-
-#if OCAML_VERSION < "4.00"
-   | Tsig_type (id, type_decl, rec_status) ->
-#else
-   | Sig_type (id, type_decl, rec_status) ->
-#endif
-      save_item package (Printf.sprintf "type-%s" (Ident.name id) :: path)
-        (string_of (Printtyp.type_declaration id) type_decl)
-
-#if OCAML_VERSION < "4.00"
-    | Tsig_class _
-#elif OCAML_VERSION < "4.02"
-    | Sig_class _
-    | Sig_class_type _
-    | Sig_exception (_, _)
-    | Sig_modtype (_, _)
-#else
-    | Sig_class _
-    | Sig_class_type _
-    | Sig_typext _
-    | Sig_modtype (_, _)
-#endif
-      -> ()
-  in
-  let path = [modname] in
-  save_item package path (string_of_signature cmi_sign);
-  List.iter (iter_item path) cmi_sign
-
-
-let current_dir = Sys.getcwd ()
-let scan_archive package archive_file =
-  let archive_file_done = archive_file ^ ".done" in
-  if not (Sys.file_exists archive_file_done) then begin
-    Printf.eprintf "Scanning archive %s\n%!" archive_file;
-    ignore (Sys.command "rm -rf archive-content");
-    Unix.mkdir "archive-content" 0o755;
-    Unix.chdir "archive-content";
-    ignore (Printf.kprintf Sys.command "tar zxf ../%s" archive_file);
-    Unix.chdir current_dir;
-    let rec iter dirname =
-      let files = Sys.readdir dirname in
-      Array.sort compare files;
-      Array.iter (fun file ->
-          let filename = Filename.concat dirname file in
-          if Filename.check_suffix file ".cmi" then
-            parse_cmi package filename
-          else
-            let st = Unix.lstat filename in
-            match st.Unix.st_kind with
-            | Unix.S_DIR ->
-              iter filename
-            | _ -> ()
-        ) files
-    in
-    iter "archive-content";
-    let oc = open_out archive_file_done in
-    Printf.fprintf oc "done\n";
-    close_out oc
-  end
-
-let scan_cache_dir cache_dir =
-  let ocaml_version = Sys.ocaml_version in
-  let switch_archive = Filename.concat cache_dir
-      (Printf.sprintf "switch-%s.tar.gz" ocaml_version) in
-  scan_archive (Printf.sprintf "ocaml.%s" ocaml_version)
-    switch_archive;
-  let packages = Sys.readdir cache_dir in
-  Array.sort compare packages;
-  Array.iter (fun package_name ->
-      let package_dir =
-        Filename.concat cache_dir package_name in
-
-      if Sys.is_directory package_dir then
-        let versions = Sys.readdir package_dir in
-        Array.sort compare versions;
-        Array.iter (fun version_name ->
-            let version_dir =
-              Filename.concat package_dir version_name in
-            if Sys.is_directory version_dir then
-              let files = Sys.readdir version_dir in
-              Array.iter (fun file ->
-                  if Filename.check_suffix file ".tar.gz" then
-                    scan_archive version_name
-                      (Filename.concat version_dir file)
-                ) files
-          ) versions
-    ) packages;
-  ()
-
-let () =
-  let package = ref "default.1.0" in
-  let arg_list = Arg.align [
-      "-package", Arg.String ( (:=) package ),
-      "PACKAGE Set package name";
-      "-cmi", Arg.String (fun cmi_file ->
-          parse_cmi !package cmi_file), "CMI_FILE Parse CMI file";
-      "-cache", Arg.String (fun cache_dir ->
-          scan_cache_dir cache_dir
-        ), "CACHE_DIR Scan cache directory";
-    ] in
-  let arg_anon s =
-    Printf.eprintf "Error: unknown argument %S\n%!" s;
-    exit 2
-  in
-  let arg_usage = "opam-files [OPTIONS]" in
-  Arg.parse arg_list arg_anon arg_usage;
-  ()
-             *)
