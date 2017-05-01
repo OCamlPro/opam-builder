@@ -1,0 +1,30 @@
+.Ok { background-color: green; }
+.BadDeps { background-color: orange; }
+.Fail { background-color: red; }
+
+.page-body {
+    margin-top:130px;
+}
+.banner-title { height: 70px; }
+.banner { position:fixed;
+          top:0px;
+          background:white;
+        }
+.attribution {
+    position:fixed;
+    top:0px;
+    left: 350px;
+    float:right;
+}
+.sub-banner{ height: 70px; }
+.index-table {
+    //    width: 100%;
+    float: left;
+}
+.packages-table {
+    //    width: 100%;
+    float: right;
+}
+.package {
+    width: 100%;
+}

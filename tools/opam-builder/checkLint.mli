@@ -21,8 +21,8 @@
 
 
 
-val analyze : CheckTypes.directories -> CheckTypes.V.commit -> unit
+val analyze : CheckTypes.directories -> CheckTypes.commit -> unit
 
-val autofix_packages : CheckTypes.directories -> CheckTypes.V.commit -> unit
+val autofix_packages : CheckTypes.directories -> CheckTypes.commit -> unit
 
-val export : CheckTypes.directories -> CheckTypes.V.commit -> unit
+val export : CheckTypes.directories -> CheckTypes.commit -> unit

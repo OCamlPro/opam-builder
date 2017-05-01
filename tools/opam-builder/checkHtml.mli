@@ -24,7 +24,7 @@
 (* Generate a file called [$COMMIT.html] in the directory [commits_dir] *)
 val print_commit_report :
   CheckTypes.state ->
-  CheckTypes.V.commit ->
+  CheckTypes.commit ->
   unit
 
 val begin_html : out_channel -> string -> unit

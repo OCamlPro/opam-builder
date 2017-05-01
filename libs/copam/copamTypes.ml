@@ -19,7 +19,7 @@
 (*  SOFTWARE.                                                             *)
 (**************************************************************************)
 
-
+(*
 
 type relop = Eq | Neq | Geq | Gt | Leq | Lt
 type logop =  And | Or
@@ -84,3 +84,6 @@ exception Lexer_error of string
               | Option (pos, _, _ ) -> pos
               | Env_binding (pos, _, _, _) -> pos
     *)
+    *)
+
+include OpamParserTypes

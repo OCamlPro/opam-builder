@@ -24,25 +24,31 @@
 (* Manage an opam installation in an opam-repository ! *)
 
 open CopamMisc
+open OcpJson.TYPES
 
-type status =
-| ExternalError
-| NotAvailable
-| NotInstallable
-| Installable of (string * string) list (* (name * version) list *)
+module TYPES = struct
+
+  type t = { rootdir : string; }
+
+  type status =
+    | ExternalError
+    | NotAvailable
+    | NotInstallable
+    | Installable of (string * string) list (* (name * version) list *)
+end
+
+open TYPES
 
 exception AtLeastOneSwitch
 
 let exit2_ifnot b = if not b then exit 2
-
-type t = { rootdir : string; }
 
 let opam_command = ref "opam.dev"
 
 let opam_cmd t cmd =
   Printf.sprintf "%s %s --root %s" !opam_command cmd t.rootdir
 
-let init ?opam rootdir switches =
+let init ~repo_subdir ?opam rootdir switch =
   begin match opam with
     None -> ()
   | Some opam -> opam_command := opam
@@ -50,29 +56,27 @@ let init ?opam rootdir switches =
   let t = { rootdir } in
 
   if not (Sys.file_exists ".opam") then begin
-    match switches with
-      [] -> raise AtLeastOneSwitch
-    | switch :: _ ->
-(* BUG-TODO: even with --jobs=1, it seems opam 1.3~dev does not correctly
+      (* BUG-TODO: even with --jobs=1, it seems opam 1.3~dev does not correctly
    set the jobs variable in .opam/config. *)
 
       exit2_ifnot (Printf.kprintf command
-                     "%s --jobs=1 --compiler %s --switch %s --no-setup --use-internal-solver local ."
-                     (opam_cmd t "init")
-                     switch switch);
-  end;
-  List.iter (fun switch ->
-    if not (Sys.file_exists (Filename.concat rootdir switch)) then begin
-      exit2_ifnot (Printf.kprintf command "%s %s" (opam_cmd t "switch") switch)
-    end
-  ) switches;
+                                  "%s --jobs=1 --compiler %s --switch %s --no-setup --use-internal-solver local %s"
+                                  (opam_cmd t "init")
+                                  switch switch
+                                  repo_subdir
+                  );
+    end;
+
+  if not (Sys.file_exists (Filename.concat rootdir switch)) then begin
+      exit2_ifnot (Printf.kprintf command "%s %s" (opam_cmd t "switch create") switch)
+    end;
   t
 
 let get_json_field json name =
   let rep = ref None in
   try
     match json with
-    | OcpJson.O fields ->
+    | O fields ->
       List.iter (fun (field_name, field_value) ->
         if field_name = name then begin rep := Some field_value; raise Exit end
       ) fields;
@@ -88,13 +92,13 @@ let get_json_field json name =
 
 let parse_json_solution =
   function
-  | OcpJson.A installs  ->
+  | L installs  ->
     let packages = List.map (fun d ->
       match d with
-        OcpJson.O [ "install",
-                    OcpJson.O [
-                      "name", OcpJson.String name;
-                      "version", OcpJson.String version;
+        O [ "install",
+                    O [
+                      "name", S name;
+                      "version", S version;
                     ]] -> (name, version)
       | _ ->
         Printf.eprintf "parse_json_solution: no %S field\n%!" "install";
@@ -110,15 +114,15 @@ let packages_of_json json =
   let d = OcpJson.of_string json in
   try
     match d with
-    | OcpJson.A [ solution ] -> parse_json_solution solution
+    | L [ solution ] -> parse_json_solution solution
 
-    | OcpJson.A [] -> [ ]
+    | L [] -> [ ]
 
-    | OcpJson.O list ->
+    | O list ->
       begin try
         let solution = get_json_field d "solution" in
         parse_json_solution solution
-        with Not_found -> raise Exit
+        with Not_found -> []
       end
 
     | _ -> raise Exit
@@ -127,11 +131,11 @@ let packages_of_json json =
     Printf.printf "%!";
     failwith "status_of_json"
 
-let check_install t cudf ~switch version =
+let rec check_install t cudf ~switch version =
   match !cudf with
   | None ->
     let json_file = "check-install.json" in
-    let log_file = "check-install.log" in
+    let log_file = Filename.temp_file "check-install" ".log" in
     let cudf_file = "check-install-1.cudf" in
     (try Sys.remove json_file with _ -> ());
     (try Sys.remove log_file with _ -> ());
@@ -148,6 +152,12 @@ let check_install t cudf ~switch version =
         let json = FileString.read_file json_file in
         Printf.eprintf "removing json..\n%!";
         (try Sys.remove json_file with _ -> ());
+        (* We disabled direct call to aspcud for two reasons:
+           1/ it currently fails on Debian strectch, maybe not only when there
+               is no solution.
+           2/ in case of failure, we do not have as much information as we
+               would get by calling opam, and we want to diagnose it.
+         *)
         begin
           try
             let cudf_content = CopamCudf.parse_cudf cudf_file in
@@ -164,15 +174,15 @@ let check_install t cudf ~switch version =
     (try Sys.remove log_file with _ -> ());
     (status, log_content)
   | Some cudf ->
-    let status =
-      try
-        match CopamCudf.call_aspcud cudf version with
-        | None -> NotInstallable
-        | Some deps -> Installable deps
-      with
-      | Not_found -> NotAvailable
+     try
+       let status =
+         match CopamCudf.call_aspcud cudf version with
+         | None -> NotInstallable
+         | Some deps -> Installable deps
+       in
+       (status, "direct call to aspcud\n")
+     with
       | exn ->
-        Printf.eprintf "Warning: aspcud error %s\n%!" (Printexc.to_string exn);
-        ExternalError
-    in
-    (status, "direct call to aspcud\n")
+         Printf.eprintf "Warning: aspcud error during direct call:\n%s\n%!" (Printexc.to_string exn);
+         Printf.eprintf "Trying through OPAM...\n%!";
+        check_install t (ref None) switch version

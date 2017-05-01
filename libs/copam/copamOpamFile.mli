@@ -21,9 +21,9 @@
 
 
 
-val parse : string -> CopamTypes.file
-val print : CopamTypes.file -> unit
+val parse : string -> CopamTypes.opamfile
+val print : CopamTypes.opamfile -> unit
 
 open StringCompat
 
-val all_possible_deps : CopamTypes.file -> StringSet.t
+val all_possible_deps : CopamTypes.opamfile -> StringSet.t

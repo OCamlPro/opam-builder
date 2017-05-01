@@ -31,8 +31,8 @@
   * dirs : the directories (often st.dirs)
 *)
 
-open CheckTypes.V
 open CheckTypes
+open CheckTypes.OP
 open StringCompat
 open CopamInstall
 
@@ -104,7 +104,7 @@ let () =
       match path with
       | [] -> ()
       | dir :: path ->
-        let file = Filename.concat dir cmd in
+        let file = dir // cmd in
         if Sys.file_exists file then begin
           Printf.eprintf "%s is in your PATH. You should clean it !\n%!" file;
           exit 2
@@ -125,45 +125,47 @@ let action_on_commit st commit =
 
   let dirs = st.dirs in
 
-  let switches = Array.map (fun sw ->
-    sw.sw_cudf := None; (* universe must have changed for every switch *)
-    sw.sw_name) st.sws in
+  let sw = st.sw in
+  let switch = sw.sw_name in
 
-  let c = CheckUpdate.check_commit ~lint ~commit dirs switches in
+  (* universe must have changed for every switch *)
+  sw.sw_cudf.cudf_backup := None;
+  Hashtbl.clear sw.sw_cudf.solver_cache;
+  sw.sw_cudf.known_universe <- None;
+
+  let c = CheckUpdate.check_commit ~lint ~commit ~switch dirs in
 
 
   StringMap.iter (fun package_name p ->
-    match p.package_transitive_checksum with
-    | None -> assert false
-    | Some (checksum, closure) ->
+      match p.package_opam_closure_checksum with
+      | None -> assert false
+      | Some (checksum, closure) ->
 
-      let package_dir = Filename.concat dirs.cache_dir package_name in
-      if not (Sys.file_exists package_dir) then Unix.mkdir package_dir 0o775;
+         let package_dir = dirs.cache_dir // package_name in
+         if not (Sys.file_exists package_dir) then Unix.mkdir package_dir 0o775;
 
-      CheckCudf.check_installability st checksum package_dir package_name;
+         CheckCudf.check_installability st checksum package_dir package_name;
 
-      StringMap.iter (fun version_name v ->
-        let version_dir = Filename.concat package_dir version_name in
-        if not (Sys.file_exists version_dir) then Unix.mkdir version_dir 0o775;
-        CheckCudf.check_installability st checksum version_dir version_name;
-      ) p.package_versions;
+         StringMap.iter (fun version_name v ->
+             let version_dir = package_dir // version_name in
+             if not (Sys.file_exists version_dir) then Unix.mkdir version_dir 0o775;
+             CheckCudf.check_installability st checksum version_dir version_name;
+           ) p.package_versions;
 
-  ) c.packages;
+    ) c.packages;
 
   (* 6/ Load all the dependencies *)
 
   StringMap.iter (fun _ p ->
-    let package_dir = Filename.concat dirs.cache_dir p.package_name in
-    p.package_status <- Array.map (fun switch ->
-      CheckCudf.status_of_files package_dir p.package_name switch
-    ) c.switches;
-    StringMap.iter (fun _ v ->
-      let version_dir = Filename.concat package_dir v.version_name in
-      v.version_status <- Array.map (fun switch ->
-        CheckCudf.status_of_files version_dir v.version_name switch
-      ) c.switches;
-    ) p.package_versions;
-  ) c.packages;
+      let package_dir = dirs.cache_dir // p.package_name in
+      p.package_status <-
+        Some (CheckCudf.status_of_files package_dir p.package_name switch);
+      StringMap.iter (fun _ v ->
+          let version_dir = package_dir // v.version_name in
+          v.version_status <-
+            Some (CheckCudf.status_of_files version_dir v.version_name switch)
+        ) p.package_versions;
+    ) c.packages;
 
   (* 7/ Print an HTML report *)
 
@@ -177,115 +179,147 @@ let action_on_commit st commit =
 
 let arg_import = ref false
 
-let current_dir = Sys.getcwd ()
+let current_dir = CheckTree.current_dir
 
-let cache_dir = Filename.concat current_dir "cache"
+let cache_dir = CheckTree.cache_dir_fullname
 let repo_dir = "."
-let opam_dir = Filename.concat current_dir ".opam"
-let report_dir = Filename.concat current_dir "reports"
+let opam_dir = current_dir // ".opam"
+let report_dir = CheckTree.reports_dir_fullname
+
 let _ =
   Printexc.record_backtrace true;
-  let switches = ref [] in
+  let arg_switches = ref [] in
   let arg_list = Arg.align [
-    "--no-pull",
-    Arg.Clear opam_pull, " Dont pull new versions of opam-repo";
-    "--lint",
-    Arg.Set arg_lint, " Call opam lint on all modified opam files";
-    "--lint-only",
-    Arg.Set arg_lint_only, " Loop on opam lint on all modified opam files";
-    "--auto-fix",
-    Arg.Unit (fun () ->
-      auto_fix := true;
-      opam_pull := false;
-      arg_lint_only := true;
-    ), " Fix using lint information";
-    "--no-build", Arg.Clear arg_build, " Do not build, generate the report.";
-    "--import", Arg.Set arg_import, " Import from directories";
-    "--to-opam2", Arg.Set arg_opam2, " Translate repo to OPAM 2.0";
-    "--gc", Arg.Set arg_gc, " Clean switch archives";
-  ] in
-  let arg_anon s = switches :=  s :: !switches in
+                     "--no-pull",
+                     Arg.Clear opam_pull, " Dont pull new versions of opam-repo";
+                     "--lint",
+                     Arg.Set arg_lint, " Call opam lint on all modified opam files";
+                     "--lint-only",
+                     Arg.Set arg_lint_only, " Loop on opam lint on all modified opam files";
+                     "--auto-fix",
+                     Arg.Unit (fun () ->
+                         auto_fix := true;
+                         opam_pull := false;
+                         arg_lint_only := true;
+                       ), " Fix using lint information";
+                     "--no-build", Arg.Clear arg_build, " Do not build, generate the report.";
+                     "--import", Arg.Set arg_import, " Import from directories";
+                     "--to-opam2", Arg.Set arg_opam2, " Translate repo to OPAM 2.0";
+                     "--gc", Arg.Set arg_gc, " Clean switch archives";
+                   ] in
+  let arg_anon s = arg_switches :=  s :: !arg_switches in
   let arg_usage = "opam-builder [OPTIONS] : backup all archives of an opam-repository" in
   Arg.parse arg_list arg_anon arg_usage;
 
-  let dirs = {
-    repo_dir; cache_dir; opam_dir; current_dir; report_dir;
-  } in
+  let repo_subdir = if !arg_opam2 then "2.0" else "." in
 
-  if !arg_gc then
-    CheckGC.clean cache_dir !switches
-  else
+  let dirs = {
+      repo_dir; cache_dir; opam_dir; current_dir; report_dir; repo_subdir;
+    } in
+
   if not !arg_import
-      && (not (Sys.file_exists "packages") || not (Sys.file_exists ".git"))
+     && (not (Sys.file_exists "packages") || not (Sys.file_exists ".git"))
   then begin
-    Printf.eprintf "opam-archive should be run at the root of an opam-repository clone.\n%!";
-    exit 2
-  end;
+      Printf.eprintf "opam-builder should be run at the root of an opam-repository clone.\n%!";
+      exit 2
+    end;
+
+  let maybe_upgrade_to_opam2 dirs =
+    if !arg_opam2 then begin
+        Printf.eprintf "Upgrading repository to 2.0...\n%!";
+        CheckBuild.chdir dirs.repo_dir;
+        CheckBuild.ignore_bool (Printf.kprintf command "opam.dev admin upgrade -m %s" dirs.repo_subdir);
+        CheckBuild.chdir dirs.current_dir;
+        Printf.eprintf "Upgrading repository to 2.0...done\n%!"
+      end
+  in
 
   let for_each_new_commit dirs f =
-    if !arg_opam2 then begin
-      Printf.eprintf "Upgrading repository to 2.0...\n%!";
-      CheckBuild.chdir dirs.repo_dir;
-      CheckBuild.ignore_bool (command "opam-admin upgrade-format");
-      CheckBuild.chdir dirs.current_dir;
-      Printf.eprintf "Upgrading repository to 2.0...done\n%!"
-
-    end
+    for_each_new_commit (fun commit ->
+        maybe_upgrade_to_opam2 dirs;
+        f commit
+      )
   in
 
   List.iter (fun dir ->
-    if not (Sys.file_exists dir) then Unix.mkdir dir 0o755
-  ) [ cache_dir; report_dir ];
+      if not (Sys.file_exists dir) then Unix.mkdir dir 0o755
+    ) [ cache_dir; report_dir ];
+
+
+  (* Linting is now disabled
 
   if !arg_lint_only then begin
 
-    let lint = true in
-    for_each_new_commit dirs (fun commit ->
-      let c = CheckUpdate.check_commit ~lint ~commit dirs [||] in
-      let c =
-        if !auto_fix then begin
-          CheckLint.autofix_packages dirs c;
-          CheckUpdate.check_commit ~lint
-            ~commit:(commit ^ "-autofix") dirs [||]
-        end else
-          c
+      let lint = true in
+      for_each_new_commit
+        dirs
+        (fun commit ->
+          let c = CheckUpdate.check_commit ~lint ~commit ~switch dirs in
+          let c =
+            if !auto_fix then begin
+                CheckLint.autofix_packages dirs c;
+                CheckUpdate.check_commit ~lint
+                                         ~commit:(commit ^ "-autofix") dirs
+              end else
+              c
+          in
+          CheckLint.analyze dirs c;
+          CheckLint.export dirs c;
+
+        )
+
+    end else
+   *)
+    if !arg_import then begin
+        let state = CheckImport.init !arg_switches in
+        while true do
+          CheckImport.import state;
+          Unix.sleep 60;
+        done
+      end else
+
+      let switch = match !arg_switches with
+          [ switch ] -> switch
+        | _ -> Printf.eprintf "Error: only one switch must be provided\n%!";
+               exit 2
       in
-      CheckLint.analyze dirs c;
-      CheckLint.export dirs c;
 
-    )
+      if !arg_gc then
+        CheckGC.clean cache_dir switch
+      else
 
-  end else
+        begin
 
-  if !arg_import then begin
-    let state = CheckImport.init !switches in
-    while true do
-      CheckImport.import state;
-      Unix.sleep 60;
-    done
-  end else begin
+          (* First of all, upgrade the repo to 2.0, in case we need opam
+      to be installed first. *)
+          maybe_upgrade_to_opam2 dirs;
 
-    let st = CheckBuild.init dirs !switches in
+          (* Check that opam is locally installed in .opam with the
+         current switch *)
+          let st = CheckBuild.init dirs switch in
 
-    for_each_new_commit dirs (fun commit ->
+          (* Iter on commits *)
+          for_each_new_commit
+            dirs
+            (fun commit ->
 
-        if command (CopamInstall.opam_cmd st.root "update") then begin
+              if command (CopamInstall.opam_cmd st.root "update") then begin
 
-          let c = action_on_commit st commit in
-          let commit_file = Filename.concat report_dir (commit ^ ".check") in
+                  let c = action_on_commit st commit in
+                  let commit_file = report_dir // (commit ^ ".check") in
 
-          CheckIO.save commit_file c;
-          let stats = CheckGraph.analyze st c in
+                  let stats = CheckStats.compute_stats st c in
+                  CheckIO.save commit_file (c, stats);
 
-          if !arg_build then CheckBuild.install_popular st c stats;
-          CheckBuild.report st c stats;
-          CheckBuild.export st c stats;
+                  if !arg_build then CheckBuild.install_popular st c stats;
+                  CheckReport.report st c stats;
+                  CheckExport.export st c stats;
 
-          CopamIssues.rotate ();
-        end else begin
-          Printf.eprintf "Error: opam update failed\n%!";
-          exit 2
-        end;
+                  CopamIssues.rotate ();
+                end else begin
+                  Printf.eprintf "Error: opam update failed\n%!";
+                  exit 2
+                end;
 
-    )
-  end
+            )
+        end

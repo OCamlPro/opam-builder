@@ -29,9 +29,9 @@
 val check_commit :
   lint:bool ->
   commit:string ->
+  switch:string ->
   CheckTypes.directories ->
-  string array -> (* switches *)
-  CheckTypes.V.commit
+  CheckTypes.commit
 
 (* [checksum_rule files new_checksum f] checks that all the [files]
    have been generated, calling a function to generate them if
@@ -45,4 +45,4 @@ val checksum_rule :
   unit
 
 val opam_file :
-  CheckTypes.directories -> CheckTypes.V.version -> string
+  CheckTypes.directories -> CheckTypes.version -> string

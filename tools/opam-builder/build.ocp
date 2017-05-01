@@ -31,10 +31,15 @@ begin
     "checkSnapshot.ml";
 
     "checkTypes.ml";
+    "checkTree.ml";
+
+    "checkJson.ml";
     "checkIO.ml";
     "checkHash.ml";
     "checkHtml.ml";
-    "checkGraph.ml";
+    "checkStats.ml";
+
+    "checkDose.ml";
 
     (* Read a commit on disk and check what has changed, no action *)
     "checkUpdate.ml";
@@ -49,28 +54,93 @@ begin
 
     (* check buildability *)
     "checkBuild.ml";
+    "checkReport.ml";
+
+    "checkExport.ml";
 
     (* Import generated files and create web pages *)
     "checkImport.ml";
+
+
   ];
 
   requires = [
     "ocplib-system";
     "ocplib-copam";
     string_compat;
-    "ocplib-json" ]
+    "ocplib-json";
+    "dose3.common" "dose3.algo" "unix" "dose3.debian"
+                                        "ocplib-compat"
+    ]
 end
 
+(*
 begin
   program "opam-builder";
 
   files = [ "main.ml" ];
 
-  requires = [
-    "opam-builder-lib"
+  requires = [ "opam-builder-lib"]
+end
+ *)
 
-    "ocplib-system";
-    "ocplib-copam";
-    string_compat;
-    "ocplib-json" ]
+begin
+  library "opam-builder-api-types";
+
+  files = [ "apiTypes.ml"  ];
+  requires = [ "ocplib-compat" ];
+end
+
+begin
+  program "opam-builder";
+
+  files = [
+      "checkFiles.ml" (file2string = [
+                           "files/opam-builder.html";
+                           "files/opam-builder.js";
+                           "files/opam-builder.css";
+                           "files/opam-builder-ocamlpro-inria-irill.png";
+                         ]);
+      "commandGc.ml";
+      "commandScan.ml";
+      "commandWeather.ml";
+      "commandFile.ml";
+      "commandBuild.ml";
+      "commandExport.ml";
+      "commandWatch.ml";
+
+      "commandCreate.ml";
+
+      "commandImport.ml";
+      "commandSwitch.ml";
+      "commandJson.ml";
+      "commandApi.ml";
+      "builder.ml" ];
+
+  requires = [
+      "opam-builder-api-types";
+      "opam-builder-lib";
+    ]
+end
+
+begin
+  program "opam-builder-api"; (* generates the database... *)
+
+  pp = ocp_pp;
+  files = [ "apiMain.ml" ];
+  requires = [
+      "ocplib-lang"; "unix";
+      "compiler-libs.common";
+      "opam-builder-api-types"
+    ];
+
+end
+
+begin program "opam-api"; (* query the database... *)
+
+      files = [ "apiQuery.ml" ];
+      requires = [
+          "ocplib-compat"; "ocplib-lang";
+          "opam-builder-api-types" ];
+
 end

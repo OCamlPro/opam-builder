@@ -21,6 +21,12 @@
 
 
 
-  type t
-  val save : string -> string list -> t
-  val restore : t -> unit
+type t
+
+(* [save dir basenames] reads the content of files [basenames] in
+directory [dir] and save them in its returned value. *)
+val save : string -> string list -> t
+
+(* [restore backup] restores all the files from the backup in their
+original directory*)
+val restore : t -> unit

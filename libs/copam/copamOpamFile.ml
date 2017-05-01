@@ -25,19 +25,28 @@ open StringCompat
 open CopamTypes
 
 let string_of_relop = function
-  | Eq -> "Eq"
-  | Neq -> "Neq"
-  | Geq -> "Geq"
-  | Gt -> "Gt"
-  | Leq -> "Leq"
-  | Lt -> "Lt"
+  | `Eq -> "Eq"
+  | `Neq -> "Neq"
+  | `Geq -> "Geq"
+  | `Gt -> "Gt"
+  | `Leq -> "Leq"
+  | `Lt -> "Lt"
 
 let string_of_logop = function
-  | And -> "And"
-  | Or -> "Or"
+  | `And -> "And"
+  | `Or -> "Or"
 
-let string_of_pfxop = function Not -> "Not"
+let string_of_pfxop = function `Not -> "Not"
 
+let print_env_update_op indent v =
+  Printf.printf "%s%s\n" indent
+                (match v with
+                   Eq -> "Eq"
+                 | PlusEq -> "PlusEq"
+                 | EqPlus -> "EqPlus"
+                 | EqPlusEq -> "EqPlusEq"
+                 | ColonEq -> "ColonEq"
+                 | EqColon -> "EqColon")
 
 let rec print_value indent v =
   Printf.printf "%s" indent;
@@ -80,9 +89,10 @@ let rec print_value indent v =
     Printf.printf "%s  [\n" indent;
     List.iter (print_value (indent ^ "     ")) list;
     Printf.printf "%s  ])" indent
-  | Env_binding (pos, string, v1, v2) ->
-    Printf.printf "Env_binding (%s,\n" string;
+  | Env_binding (pos, v1, env_update_op, v2) ->
+    Printf.printf "Env_binding (\n";
     print_value (indent ^ "  ") v1;
+    print_env_update_op (indent ^ "  ") env_update_op;
     print_value (indent ^ "  ") v2;
     Printf.printf "%s  )" indent;
   end;
@@ -105,7 +115,8 @@ and print_file_section indent  {
 } =
   Printf.printf "%s{\n" indent;
   Printf.printf "%s   section_kind = %s;\n" indent section_kind;
-  Printf.printf "%s   section_name = %s;\n" indent section_name;
+  Printf.printf "%s   section_name = %S;\n" indent
+                (match section_name with None -> "" | Some s -> s);
   Printf.printf "%s   section_items = [\n" indent;
   List.iter (print_file_item (indent ^ "    ")) section_items;
   Printf.printf "%s        ];\n" indent;
@@ -129,7 +140,7 @@ let parse opam_file =
   let ic = open_in opam_file in
   try
     let lexbuf = Lexing.from_channel ic in
-    let v = CopamParser.main CopamLexer.token lexbuf opam_file in
+    let v = OpamParser.main OpamLexer.token lexbuf opam_file in
     close_in ic;
     v
   with e ->

@@ -22,29 +22,4 @@
 
 
 
-type version_stats = {
-  s_version : CheckTypes.V.version;
-  mutable s_used : int;      (* #occurrences to compile each version *)
-  mutable s_used_last : int; (* #occurrences to compile each package *)
-}
-
-type stats = {
-  stats_switch : CheckTypes.switch;
-
-  stats_version : version_stats array;
-  (* sorted by #occurrences to compile each version *)
-
-  stats_version2 : version_stats array;
-  (* sorted by #occurrences to compile each package *)
-
-  stats_installable_versions : int;
-  stats_installable_packages : int;
-  stats_unavailable_packages : int;
-  stats_unavailable_versions : int;
-  stats_uninstallable_versions : int;
-  stats_uninstallable_packages : int;
-  stats_error_versions : int;
-  stats_error_packages : int;
-}
-
-val analyze : CheckTypes.state -> CheckTypes.V.commit -> stats array
+val compute_stats : CheckTypes.state -> CheckTypes.commit -> CheckTypes.stats

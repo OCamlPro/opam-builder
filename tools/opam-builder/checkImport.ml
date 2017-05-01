@@ -21,8 +21,8 @@
 
 
 
-open CheckTypes.V
 open CheckTypes
+open CheckTypes.OP
 open StringCompat
 open CopamInstall
 
@@ -308,7 +308,7 @@ let print_status_report vd cd status =
   need_dir pd.pd_dir;
   need_dir vd.vd_dir;
 
-  let temp_file = Filename.concat vd.vd_dir "tmp" in
+  let temp_file = vd.vd_dir // "tmp" in
   let oc = open_out temp_file in
   CheckHtml.begin_html oc vd.vd_name;
   Printf.fprintf oc "<h1>Version: %s</h1>\n%!" vd.vd_name;
@@ -387,8 +387,7 @@ let print_status_report vd cd status =
   CheckHtml.end_html oc;
   close_out oc;
   let digest = CheckDigest.file temp_file in
-  let final_file = Filename.concat vd.vd_dir
-      (CheckDigest.to_printable_string digest) in
+  let final_file = vd.vd_dir // (CheckDigest.to_printable_string digest) in
   if not (Sys.file_exists final_file) then
     Sys.rename temp_file final_file;
   digest
@@ -510,7 +509,7 @@ let get_display switches =
   let pds = ref [] in
 
   StringMap.iter (fun package_name package_versions ->
-      let package_dir = Filename.concat html_dir package_name in
+      let package_dir = html_dir // package_name in
       need_dir package_dir;
 
       let pd = {
@@ -522,7 +521,7 @@ let get_display switches =
       pds := pd :: !pds;
 
       StringSet.iter (fun version_name ->
-          let version_dir = Filename.concat package_dir version_name in
+          let version_dir = package_dir // version_name in
           let vd = {
             vd_name = version_name;
             vd_dir = version_dir;
@@ -738,7 +737,7 @@ let print_report ~mode display switch_name =
       | Full -> switch_name ^ "-full", switch_name
       | Diff -> switch_name, switch_name ^ "-full"
   in
-  let oc = open_out (Filename.concat html_dir
+  let oc = open_out (html_dir //
                        (Printf.sprintf "report-%s.html" name)) in
   CheckHtml.begin_html oc (Printf.sprintf "Report: %s" name);
   Printf.fprintf oc "<h1>opam-repository Status on Debian 8</h1>\n";
@@ -863,6 +862,7 @@ let print_report ~mode display switch_name =
   end;
 
   Printf.fprintf oc "</table>\n";
+  (* Some javascript to have the title row floating when scrolling down. *)
   Printf.fprintf oc
     "
 <script>
@@ -935,7 +935,7 @@ let import t =
             | date :: commit :: switch :: []
               when String.length date = 14
               ->
-              let filename =  Filename.concat dir file in
+              let filename =  dir  // file in
               export_files := (switch, date, filename) :: !export_files;
             | _ -> ()
         ) files

@@ -1,0 +1,41 @@
+<html>
+  <head>
+    <title>Opam Builder</title>
+    <script type="text/javascript" src="opam-builder.js"></script>
+    <link type="text/css" rel="stylesheet" href="opam-builder.css" />
+  </head>
+  <body onload='body_onload();' class="page-body">
+
+    <div class="banner">
+      <h1 class="banner-title">OPAM BUILDER</h1>
+    <input id="id-search" class="search-query" type="text" placeholder="Search packages"/>
+    <button onclick='button_global_search()'>Global Search</button>
+    <button onclick='button_clear_search()'>Clear Search</button>
+    <button onclick='button_all_switches()'>All Switches</button>
+    <button onclick='button_swap_view_switches_package()'>Swap View Switches/Package</button>
+    <button onclick='button_swap_diff_mode()'>Swap Diff Mode</button>
+    <button onclick='button_clear_cache()'>Clear Json Cache</button>
+    <button onclick='button_page_prev()'>Prev Page</button>
+    <button onclick='button_page_next()'>Next Page</button>
+    </div>
+    <a  class="attribution" href="http://www.ocamlpro.com/"><img id="id-attribution" src="opam-builder-ocamlpro-inria-irill.png" /></a>
+    <div class="sub-banner"></div>
+    <div id = "id-packages" class="packages">
+      <h2 id="id-table-title">All Switches</h2>
+      <h2><div id="id-index-title"></div><div id="id-diff-mode"></div></h2>
+      <table class="index-table" id="id-index-table"></table>
+      <table class="packages-table" id="id-packages-table"></table>
+    </div>
+    <div id="id-package" class="package">
+      <h2>Package <div id="id-version_name"></div></h2>
+      <h3>State: <div id="id-status"></div></h3>
+      <h3>Check Date: <pre id="id-check_date"></pre></h3>
+      <h3>Switch: <pre id="id-switch_name"></pre></h3>
+      <h3>Commit: <pre id="id-commit_name"></pre></h3>
+      <h3>Build Result: <pre id="id-build_result"></pre></h3>
+      <h3>Build Log:</h3> <pre id="id-build_log"></pre>
+      <h3>Build Info:</h3> <pre id="id-build_info"></pre>
+      <h3>Depends:</h3> <ul id="id-depends"></ul>
+    </div>
+  </body>
+  </html>

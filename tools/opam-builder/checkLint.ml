@@ -28,8 +28,8 @@
 
 
 open StringCompat
-open CheckTypes.V
 open CheckTypes
+open CheckTypes.OP
 
 let max_errors = 50 (* TODO: auto-compute *)
 let colon_pos = 20 (* Monitor opam... *)
@@ -75,10 +75,8 @@ let load_lint lint_version filename =
 
 let load_all_lint dirs c =
   StringMap.iter (fun _ p ->
-    let package_dir = Filename.concat dirs.cache_dir p.package_name in
     StringMap.iter (fun _ v ->
-      let version_dir = Filename.concat package_dir v.version_name in
-      let lint_file = Filename.concat version_dir
+      let lint_file = v.version_cache_dir //
         (Printf.sprintf "%s.lint" v.version_name) in
       v.version_lint <- load_lint v lint_file;
     ) p.package_versions;
@@ -109,7 +107,7 @@ let analyze dirs c =
     ) p.package_versions;
   ) c.packages;
 
-  let report_file = Filename.concat dirs.report_dir
+  let report_file = dirs.report_dir //
     (Printf.sprintf "%s-lint.html" c.commit_name) in
   let oc = open_out report_file in
   Printf.fprintf oc "<h1>Commit %s</h1>\n" c.commit_name;
@@ -550,7 +548,7 @@ let export dirs c =
   load_all_lint dirs c;
 
   let date = CheckDate.TIMESTAMP.current () in
-  let export_file = Filename.concat dirs.report_dir
+  let export_file = dirs.report_dir //
       (Printf.sprintf "%s-%s-lint.export"
          date
          c.commit_name) in

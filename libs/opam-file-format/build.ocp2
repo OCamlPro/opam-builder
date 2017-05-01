@@ -1,0 +1,12 @@
+
+
+begin
+
+  ocaml.files = [
+     "opamParserTypes.mli";
+     "opamLexer.mll";
+     "opamParser.mly";
+  ];
+
+  OCaml.library("opam-file-format", ocaml);
+end

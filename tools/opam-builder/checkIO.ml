@@ -24,16 +24,23 @@
 open CheckTypes
 
 type file =
-| V1 of V1.commit
+| V1 of commit * stats
 
-let save file_name commit =
-  let oc = open_out_bin file_name in
-  output_value oc (V1 commit);
-  close_out oc
+let save file_name (commit, stats) =
+  let tmp_file = file_name ^ ".tmp" in
+  let oc = open_out_bin tmp_file in
+  output_value oc (V1 (commit, stats));
+  close_out oc;
+  Sys.rename tmp_file file_name
 
 let load file_name =
   let ic = open_in_bin file_name in
   let file = (input_value ic : file) in
   close_in ic;
   match file with
-  | V1 commit -> commit
+  | V1 (commit, stats) -> (commit, stats)
+
+let getsize filename =
+  try
+    (Unix.stat filename).Unix.st_size
+  with _ -> -1

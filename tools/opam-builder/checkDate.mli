@@ -29,3 +29,4 @@ module type Date_sig = sig
 
 module ISO8601 : Date_sig
 module TIMESTAMP : Date_sig
+module DISPLAY : Date_sig

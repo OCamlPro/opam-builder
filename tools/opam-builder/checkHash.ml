@@ -21,7 +21,7 @@
 
 
 
-open CheckTypes.V
+open CheckTypes
 open StringCompat
 
 let rec hash_directory dirname =
@@ -42,19 +42,19 @@ let rec hash_directory dirname =
 
 
 
-let hash_package_content p =
+let hash_package_opam p =
   let b = Buffer.create 1111 in
   Buffer.add_string b p.package_name;
   StringMap.iter (fun _ v ->
     Buffer.add_string b v.version_name;
-    CheckDigest.add_digest b v.version_checksum;
+    CheckDigest.add_digest b v.version_opam_checksum;
   ) p.package_versions;
-  p.package_local_checksum <- Some (CheckDigest.string (Buffer.contents b))
+  p.package_opam_local_checksum <- Some (CheckDigest.string (Buffer.contents b))
 
 
 
 
-let hash_package_closure p visit =
+let hash_package_opam_closure p visit =
   incr visit;
   if !visit = 0 then begin
     (* Instead, we should reinitialize the counters *)
@@ -73,7 +73,7 @@ let hash_package_closure p visit =
 
   let b = Buffer.create 1111 in
   StringMap.iter (fun package_name p ->
-    match p.package_local_checksum with
+    match p.package_opam_local_checksum with
     | None -> assert false
     | Some checksum ->
       Buffer.add_string b package_name;
@@ -81,4 +81,4 @@ let hash_package_closure p visit =
   ) !closure;
   let checksum = CheckDigest.string (Buffer.contents b) in
 
-  p.package_transitive_checksum <- Some (checksum, !closure)
+  p.package_opam_closure_checksum <- Some (checksum, !closure)
