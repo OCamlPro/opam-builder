@@ -23,11 +23,13 @@ open StringCompat
 open CheckTypes.OP
 
 let arg_replace_commit_tree = ref false
+let arg_watch = ref false
 
 let args = [
     "--replace-commit-tree", Arg.Set arg_replace_commit_tree,
     " Replace already existing commit tree";
-
+    "--watch", Arg.Set arg_watch,
+    " Keep running";
   ]
 
 let rec head_n n list =
@@ -151,4 +153,29 @@ let generate_json dirs =
 
   ()
 
-let action dirs = generate_json dirs
+let readdir dir = try Sys.readdir dir with _ -> [||]
+
+let action dirs = 
+
+   let rec iter prev_files =
+
+     let report_dirs = ref [] in
+     List.iter (fun dir -> 
+                    let files = readdir dir in
+                    Array.iter (fun file ->
+                                    let report_dir = dir // file //
+                                    "builder.reports" in
+                                    if Sys.file_exists report_dir then
+                                    report_dirs := report_dir :: !report_dirs
+                                    ) files
+     ) dirs;
+
+     let new_files = List.map readdir !report_dirs in
+     if prev_files <> new_files then 
+       generate_json !report_dirs;
+
+     if !arg_watch then begin
+       Unix.sleep 5;
+       iter new_files
+     end
+   in iter []
