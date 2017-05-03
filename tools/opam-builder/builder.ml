@@ -217,12 +217,32 @@ let () =
   Subcommand.add "watch"
                  CommandWatch.args
                  true
-                 "Watch an opam-repository"
+                 "Watch a git repository"
                  [ "opam-builder watch [arguments]";
                    "";
-                   "  Watch the opam-repository in which it is called.";
+                   "  Watch a git repository and call a command at every commit.";
                  ]
                  CommandWatch.action;
+
+  Subcommand.add "opam"
+                 CommandOpam.args
+                 false
+                 "Watch a remote opam-repository"
+                 [ "opam-builder opam [arguments]";
+                   "";
+                   "  Regularly update the opam-repository in which it is called.";
+                 ]
+                 CommandOpam.action;
+
+  Subcommand.add "switch"
+                 CommandSwitch.args
+                 false
+                 "Watch the local switch in which it is called"
+                 [ "opam-builder watch [arguments]";
+                   "";
+                   "  Watch the local opam-builder switch in which it is called.";
+                 ]
+                 CommandSwitch.action;
 
   Subcommand.add "api"
                  CommandApi.args

@@ -63,14 +63,15 @@ let action switches =
       let opam_config_backup = opam_config_file ^ ".backup" in
       let opam_config_file = Filename.quote opam_config_file in
       let opam_config_backup = Filename.quote opam_config_backup in
-   
+
       let cmd1 = Printf.sprintf "cp %s %s"
         opam_config_file opam_config_backup in
-      
+
+      (* There is no other way to change the value of jobs: *)
       let cmd2 = Printf.sprintf "sed 's|^jobs: .*|jobs: 1|' < %s > %s"
         opam_config_backup opam_config_file in
-      
-      if not (CheckBuild.command cmd1 && CheckBuild.command cmd2) then 
+
+      if not (CheckBuild.command cmd1 && CheckBuild.command cmd2) then
         Printf.eprintf "Warning: could not set jobs to 1. You MUST edit it !\n%!";
 
       CheckTree.write_switch switch;

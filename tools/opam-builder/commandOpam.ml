@@ -19,26 +19,10 @@
 (*  SOFTWARE.                                                             *)
 (**************************************************************************)
 
-
-let arg_old_export = ref false
-
-let args =
-    CommandWatch.generic_args
-  @ CommandExport.args
-  @ CommandGc.args
+let args = CommandWatch.generic_args
 
 let action args =
 
-  CheckTree.check_in_tree ();
-  CommandScan.check_env ();
-
   CommandWatch.watch (fun commit ->
-      Printf.eprintf "Watch: re-building...\n%!";
-      if !arg_old_export then
-        CommandExport.generate_export_file ()
-      else
-        ignore (CommandBuild.build_packages () : _);
-
-      Printf.eprintf "Watch: GC...\n%!";
-      CommandGc.do_gc ()
+      Printf.eprintf "Opam: new commit %s...\n%!" commit;
     )

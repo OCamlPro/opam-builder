@@ -113,6 +113,7 @@ begin
 
       "commandImport.ml";
       "commandSwitch.ml";
+      "commandOpam.ml";
       "commandJson.ml";
       "commandApi.ml";
       "builder.ml" ];

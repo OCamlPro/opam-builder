@@ -24,10 +24,7 @@ let arg_delay = ref 60
 let arg_branch = ref "master"
 let arg_remote = ref "ocaml"
 
-let args = [
-    "--on-commit", Arg.Rest (fun s -> arg_on_commit := s :: !arg_on_commit),
-    "REST Command called on each new commit, with";
-    "", Arg.Unit (fun () -> ()), "    commit passed as last argument";
+let generic_args = [
     "--delay", Arg.Int (fun s -> arg_delay := s),
     "DELAY Check every DELAY seconds";
     "--branch", Arg.String (fun s -> arg_branch := s),
@@ -35,10 +32,17 @@ let args = [
     "--remote", Arg.String (fun s -> arg_remote := s),
     Printf.sprintf "REMOTE Watch remote REMOTE (default is %S)" !arg_remote;
   ]
-           @ CommandExport.args
-           @ CommandGc.args
+
+let args = [
+    "--on-commit", Arg.Rest (fun s -> arg_on_commit := s :: !arg_on_commit),
+    "REST Command called on each new commit, with";
+    "", Arg.Unit (fun () -> ()), "    commit passed as last argument";
+  ] @ generic_args
 
 let watch f =
+
+  if not (Sys.file_exists ".git") then
+    CheckTree.fatal "this command must be run in a .git repo";
 
   let last_commit = ref "reboot" in
   while true do
@@ -56,30 +60,16 @@ let watch f =
     Unix.sleep !arg_delay
   done
 
-let arg_old_export = ref false
-
 let action args =
-  match !arg_on_commit with
-    [] ->
-    CheckTree.check_in_tree ();
-    CommandScan.check_env ();
-
-    watch (fun commit ->
-        Printf.eprintf "Watch: re-building...\n%!";
-        if !arg_old_export then
-          CommandExport.generate_export_file ()
-        else
-          ignore (CommandBuild.build_packages () : _);
-
-        Printf.eprintf "Watch: GC...\n%!";
-        CommandGc.do_gc ()
-      )
-
-  | args ->
-     watch (fun commit ->
-         let args = List.rev (commit :: args) in
-         let args = List.map (function
-                                "SELF" -> Sys.argv.(0)
-                              | s -> s) args in
-         ignore ( CommandScan.command (String.concat " " args) : bool );
-       );
+  let args =
+    match !arg_on_commit with
+      [] -> [ "echo"; "NEW"; "COMMIT" ]
+    | args -> args
+  in
+  watch (fun commit ->
+      let args = List.rev (commit :: args) in
+      let args = List.map (function
+                             "SELF" -> Sys.argv.(0)
+                           | s -> s) args in
+      ignore ( CommandScan.command (String.concat " " args) : bool );
+    )
