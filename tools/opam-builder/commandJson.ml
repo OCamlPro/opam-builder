@@ -145,6 +145,9 @@ let generate_json dirs =
               "opam-builder-ocamlpro-inria-irill.png";
             ];
 
+  Gc.major();
+  Gc.compact();
+
   ()
 
 let readdir dir = try Sys.readdir dir with _ -> [||]
