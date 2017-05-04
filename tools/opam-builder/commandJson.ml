@@ -23,11 +23,13 @@ open StringCompat
 open CheckTypes.OP
 
 let arg_replace_commit_tree = ref false
+let arg_watch = ref false
 
 let args = [
     "--replace-commit-tree", Arg.Set arg_replace_commit_tree,
     " Replace already existing commit tree";
-
+    "--watch", Arg.Set arg_watch,
+    " Keep running";
   ]
 
 let rec head_n n list =
@@ -94,49 +96,43 @@ let generate_json dirs =
         ) files
     ) dirs;
 
-  (* keep only the last 6 commits for each switch *)
-  let switches =
-    StringMap.mapi (fun switch (commits, list) ->
-        StringMap.iter (fun _ list ->
-            (* sort each list of files in decreasing times, for a commit *)
-            list := List.rev (List.sort compare !list)
-          ) !commits;
-      (* sort each list of commits in decreasing times, for a switch.
-       it requires the files to be sorted by date. *)
-        let commits = head_n 6 (List.rev (List.sort compare !list)) in
-
-        Printf.eprintf "For switch %S,\n%!" switch;
-        (* preload them *)
-        List.map (fun list ->
-            match !list with
-              [] -> assert false
-            | (_, file) :: _ ->
-               Printf.eprintf "   using %S\n%!" file;
-               let (c, _stats) = CheckIO.load file in
-            c) commits
-      ) !switches
-  in
-
-  let main_cs = (* main page: last commit per switch *)
-    let cs = ref [] in
-    StringMap.iter (fun switch switch_cs ->
-        match switch_cs with
-          [] -> assert false
-        | c :: _ -> cs := c :: !cs
-      ) switches;
-    List.rev !cs
-  in
 
   let replace_commit_tree = !arg_replace_commit_tree in
   let generate_json file cs =
     CheckJson.of_commits  ~replace_commit_tree file cs;
     Printf.eprintf "File %S generated\n%!" file
   in
-  generate_json "opam-builder.json" main_cs;
 
-  StringMap.iter (fun switch switch_cs ->
-      generate_json (Printf.sprintf "%s.json" switch) switch_cs
-    ) switches;
+  (* keep only the last 6 commits for each switch *)
+  let main_cs = ref [] in
+
+  StringMap.iter (fun switch (commits, list) ->
+      StringMap.iter (fun _ list ->
+          (* sort each list of files in decreasing times, for a commit *)
+          list := List.rev (List.sort compare !list)
+        ) !commits;
+      (* sort each list of commits in decreasing times, for a switch.
+       it requires the files to be sorted by date. *)
+      let commits = head_n 6 (List.rev (List.sort compare !list)) in
+
+      Printf.eprintf "For switch %S,\n%!" switch;
+      (* preload them *)
+      let switch_cs =
+        List.map (fun list ->
+            match !list with
+              [] -> assert false
+            | (_, file) :: _ ->
+               Printf.eprintf "   using %S\n%!" file;
+               let (c, _stats) = CheckIO.load file in
+               c) commits
+      in
+      generate_json (Printf.sprintf "%s.json" switch) switch_cs;
+      match switch_cs with
+        [] -> assert false
+      | c :: _ -> main_cs := c :: !main_cs
+    ) !switches;
+
+  generate_json "opam-builder.json" !main_cs;
 
   List.iter (fun file ->
       FileString.write_file file
@@ -149,6 +145,34 @@ let generate_json dirs =
               "opam-builder-ocamlpro-inria-irill.png";
             ];
 
+  Gc.major();
+  Gc.compact();
+
   ()
 
-let action dirs = generate_json dirs
+let readdir dir = try Sys.readdir dir with _ -> [||]
+
+let action dirs =
+
+   let rec iter prev_files =
+
+     let report_dirs = ref [] in
+     List.iter (fun dir ->
+                    let files = readdir dir in
+                    Array.iter (fun file ->
+                                    let report_dir = dir // file //
+                                    "builder.reports" in
+                                    if Sys.file_exists report_dir then
+                                    report_dirs := report_dir :: !report_dirs
+                                    ) files
+     ) dirs;
+
+     let new_files = List.map readdir !report_dirs in
+     if prev_files <> new_files then
+       generate_json !report_dirs;
+
+     if !arg_watch then begin
+       Unix.sleep 5;
+       iter new_files
+     end
+   in iter []
