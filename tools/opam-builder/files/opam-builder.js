@@ -137,10 +137,13 @@ function body_onload()
     var search = document.getElementById(search_id);
     search.value = window.location.hash.substr(1);
 
-    search.onkeyup = function(){
+    search.onkeyup = button_global_search;
+/*
+    function(){
         var e = object_of_state();
         update_view(e);
     };
+    */
     
     var s = initial_state();
     history_init( s );
@@ -186,10 +189,19 @@ function update_view( s )
     }
 }
 
+function row_has_diff(v)
+{
+    var r = v.r[0];
+    for(var i = 1; i < v.r.length; i++){
+        if( ! ( v.r[i] === r ) ) return true;
+    }
+    return false;;
+}
+
 function update_table()
 {
     console.log("update_table");
-    if( table_search === "" ){
+    if( table_search === "" && !table_diff_mode){
         table_table = table_json.packages;
     } else {
         var table_num = 0;
@@ -200,7 +212,9 @@ function update_table()
             p_index = -1;
             for(j=0; j < p.v.length; j++){
                 v = p.v[j];
-                if( v.v.toUpperCase().indexOf(pattern) >= 0 ){
+                if( v.v.toUpperCase().indexOf(pattern) >= 0 &&
+                    ( !table_diff_mode || row_has_diff(v) )
+                  ){
                     if( p_index < 0 ){
                         var name = p.p;
                         pp = {};
@@ -219,23 +233,39 @@ function update_table()
     }
 }
 
+var button_diff_mode_id = 'id-button-diff-mode';
+
 /* called when table_json_url is ok */
 function really_update_view( s )
 {
     console.log("really_update_view");
-    if( ! (s.table_search === table_search) ){
+    if( ! (s.table_search === table_search) ||
+        s.table_diff_mode != table_diff_mode
+      ){
+        table_diff_mode = s.table_diff_mode;
+        var diff_mode_button = document.getElementById(button_diff_mode_id);
+        if( table_diff_mode ){
+            diff_mode_button.innerHTML = 'Exit Diff Mode';
+        } else {
+            diff_mode_button.innerHTML = 'Switch to Diff Mode';
+        }
+
+        
         table_search = s.table_search;
+        table_title = 'bad';
         table_table = [];
     }
 
     if( table_table.length == 0 ) {
-        table_page = -1;
+        table_title = 'bad';
         table_page_size = -1;
         update_table();
     }
 
     if( s.table_page_size != table_page_size ){
         table_page_size = s.table_page_size;
+        table_page = -1;
+        table_title = 'bad';
         update_index();
     }
 
@@ -246,8 +276,14 @@ function really_update_view( s )
 
     if( ! (s.table_title === table_title) ){
         table_title = s.table_title;
+        var new_title = table_title;
         var title = document.getElementById(table_title_id);
-        title.innerHTML = table_title;
+        if( table_diff_mode )
+            new_title += " (diff mode)";
+        if( ! ( table_search === "" ) )
+            new_title += " (pattern [" + table_search + "] )";
+        new_title += " (view " + table_page_size + " versions)";
+        title.innerHTML = new_title;
     }
 
     if( s.show_table != show_table ){
@@ -262,6 +298,7 @@ function really_update_view( s )
             div.style.display = "";
         }
     }
+    /*
     if( s.table_diff_mode != table_diff_mode ){
         table_diff_mode = s.table_diff_mode;
         var title = document.getElementById(diff_mode_id);
@@ -269,9 +306,9 @@ function really_update_view( s )
             title.innerHTML = "(diff mode)";
         } else {
             title.innerHTML = "";
-        }
-        
+        }        
     }
+*/
     if( show_table == 0 ){
         update_local_view();
     }
@@ -424,8 +461,12 @@ function update_packages_rows()
             
             /* version */
             td = document.createElement('td');
+            var a = document.createElement('a');
             var text = document.createTextNode(v.v);
-            td.appendChild(text);
+            a.href = 'https://github.com/ocaml/opam-repository/tree/master/packages/' + p.p + '/' + v.v + '/opam';
+            a.target = 'packages';
+            a.appendChild(text);
+            td.appendChild(a);
             tr.appendChild(td);
             
             /* results per commit */
@@ -598,7 +639,7 @@ function update_local_view()
         }
     }
 
-    /* Update from diff */
+    /* Update from diff 
     if( table_diff_mode == 1 ){
         for(var i = first_row; i < table.rows.length; i++){
             var tr = table.rows[i];
@@ -611,6 +652,7 @@ function update_local_view()
             if(!disp) display[i] = false;
         }
     }
+    */
     
     for(var i = first_row; i < table.rows.length; i++){
         var tr = table.rows[i];
@@ -683,6 +725,24 @@ function button_global_search()
     s.table_page = 0;
     update_view( s );
 }
+
+var select_page_size_id = 'id-select-page-size';
+
+function select_page_size(n)
+{
+    var s = object_of_state();
+    var select = document.getElementById(select_page_size_id);
+    var options = select.options;
+    console.log('options = ' + options);
+    var selected = options.selectedIndex;
+    console.log('options = ' + selected);
+    var option = options[selected];
+    console.log('option = ' + option);
+    s.table_page_size = parseInt(option.value);
+    update_view( s );
+}
+
+
 
 /* Generic functions */
 
