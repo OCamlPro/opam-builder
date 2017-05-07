@@ -84,6 +84,7 @@ var table_page = 0;       // position of displayed table
 var table_page_size = 200;    // min number of displayed entries
 var table_title = "";   // current displayed switch
 var table_search = "";   // global search
+var table_tag = "";      // Ok, Missing, Fail, BadDeps
 
 var package_json_url = "";
 
@@ -98,7 +99,8 @@ function object_of_state()
         table_page_size: table_page_size,
         table_title: table_title,
         table_search: table_search,
-
+        table_tag: table_tag,
+        
         package_json_url: package_json_url,
     };
 }
@@ -126,7 +128,8 @@ function initial_state()
         table_page_size: 200,
         table_title: "All Switches",
         table_search: "",
-
+        table_tag: "",
+        
         package_json_url: ""
     };
 }
@@ -198,10 +201,18 @@ function row_has_diff(v)
     return false;;
 }
 
+function row_has_tag(v)
+{
+    for(var i = 0; i < v.r.length; i++){
+        if( v.r[i] === table_tag ) return true;
+    }
+    return false;;
+}
+
 function update_table()
 {
     console.log("update_table");
-    if( table_search === "" && !table_diff_mode){
+    if( table_search === "" && !table_diff_mode && table_tag == ""){
         table_table = table_json.packages;
     } else {
         var table_num = 0;
@@ -213,7 +224,8 @@ function update_table()
             for(j=0; j < p.v.length; j++){
                 v = p.v[j];
                 if( v.v.toUpperCase().indexOf(pattern) >= 0 &&
-                    ( !table_diff_mode || row_has_diff(v) )
+                    ( !table_diff_mode || row_has_diff(v) ) &&
+                    ( table_tag === "" || row_has_tag(v))
                   ){
                     if( p_index < 0 ){
                         var name = p.p;
@@ -240,9 +252,11 @@ function really_update_view( s )
 {
     console.log("really_update_view");
     if( ! (s.table_search === table_search) ||
-        s.table_diff_mode != table_diff_mode
+        s.table_diff_mode != table_diff_mode ||
+        ! (s.table_tag === table_tag)
       ){
         table_diff_mode = s.table_diff_mode;
+        table_tag = s.table_tag;
         var diff_mode_button = document.getElementById(button_diff_mode_id);
         if( table_diff_mode ){
             diff_mode_button.innerHTML = 'Exit Diff Mode';
@@ -280,6 +294,8 @@ function really_update_view( s )
         var title = document.getElementById(table_title_id);
         if( table_diff_mode )
             new_title += " (diff mode)";
+        if( table_tag )
+            new_title += " (tag "+ table_tag + " )";
         if( ! ( table_search === "" ) )
             new_title += " (pattern [" + table_search + "] )";
         new_title += " (view " + table_page_size + " versions)";
@@ -727,17 +743,26 @@ function button_global_search()
 }
 
 var select_page_size_id = 'id-select-page-size';
+var select_table_tag_id = 'id-select-table-tag';
 
-function select_page_size(n)
+function select_table_tag()
+{
+    console.log("select_table_tag");
+    var s = object_of_state();
+    var select = document.getElementById(select_table_tag_id);
+    var options = select.options;
+    var option = options[options.selectedIndex];
+    console.log("select_table_tag");
+    s.table_tag = option.value;
+    update_view( s );
+}
+
+function select_page_size()
 {
     var s = object_of_state();
     var select = document.getElementById(select_page_size_id);
     var options = select.options;
-    console.log('options = ' + options);
-    var selected = options.selectedIndex;
-    console.log('options = ' + selected);
-    var option = options[selected];
-    console.log('option = ' + option);
+    var option = options[options.selectedIndex];
     s.table_page_size = parseInt(option.value);
     update_view( s );
 }
