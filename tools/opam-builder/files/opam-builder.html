@@ -9,14 +9,21 @@
     <div class="banner">
       <h1 class="banner-title">OPAM BUILDER</h1>
     <input id="id-search" class="search-query" type="text" placeholder="Search packages"/>
-    <button onclick='button_global_search()'>Global Search</button>
-    <button onclick='button_clear_search()'>Clear Search</button>
-    <button onclick='button_all_switches()'>All Switches</button>
-    <button onclick='button_swap_view_switches_package()'>Swap View Switches/Package</button>
-    <button onclick='button_swap_diff_mode()'>Swap Diff Mode</button>
-    <button onclick='button_clear_cache()'>Clear Json Cache</button>
-    <button onclick='button_page_prev()'>Prev Page</button>
-    <button onclick='button_page_next()'>Next Page</button>
+    <button onclick='javascript:button_clear_search()'>Clear Search</button>
+    <button onclick='javascript:button_all_switches()'>All Switches</button>
+    <button onclick='javascript:button_swap_view_switches_package()'>Swap View Switches/Package</button>
+    <button id='id-button-diff-mode'
+            onclick='javascript:button_swap_diff_mode()'
+            >Swap Diff Mode</button>
+    <button onclick='javascript:button_clear_cache()'>Clear Json Cache</button>
+    <button onclick='javascript:button_page_prev()'>Prev Page</button>
+    <button onclick='javascript:button_page_next()'>Next Page</button>
+    <select id='id-select-page-size' onchange='javascript:select_page_size()'>
+      <option value="200" selected>View 200</option>
+      <option value="500">View 500</option>
+      <option value="1000">View 1000</option>
+      <option value="10000">View All</option>
+    </select>
     </div>
     <a  class="attribution" href="http://www.ocamlpro.com/"><img id="id-attribution" src="opam-builder-ocamlpro-inria-irill.png" /></a>
     <div class="sub-banner"></div>
