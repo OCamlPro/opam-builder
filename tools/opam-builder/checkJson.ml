@@ -102,7 +102,7 @@ let of_commit ~replace_commit_tree c =
     ()
 
 
-let of_commits ~replace_commit_tree filename cs =
+let of_commits ~replace_commit_tree filename title cs =
 
   let dates = L (List.map (fun c -> S c.check_date) cs) in
   let timestamps = L (List.map (fun c -> S c.timestamp_date) cs) in
@@ -175,7 +175,9 @@ let of_commits ~replace_commit_tree filename cs =
       packages := p :: !packages
     ) !map;
   let packages = List.rev !packages in
-  let t = O [ "dates", dates;
+  let t = O [
+              "title", S title;
+              "dates", dates;
               "timestamps", timestamps;
               "commits", commits;
               "switches", switches;

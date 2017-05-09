@@ -24,12 +24,18 @@ open CheckTypes.OP
 
 let arg_replace_commit_tree = ref false
 let arg_watch = ref false
+let arg_static = ref true
+let arg_dynamic = ref true
 
 let args = [
     "--replace-commit-tree", Arg.Set arg_replace_commit_tree,
     " Replace already existing commit tree";
     "--watch", Arg.Set arg_watch,
     " Keep running";
+    "--no-static", Arg.Clear arg_static,
+    " Do not replace static files (HTML/CSS/JS)";
+    "--no-dynamic", Arg.Clear arg_dynamic,
+    " Do not replace dynamic files (JSON files)";
   ]
 
 let rec head_n n list =
@@ -98,8 +104,8 @@ let generate_json dirs =
 
 
   let replace_commit_tree = !arg_replace_commit_tree in
-  let generate_json file cs =
-    CheckJson.of_commits  ~replace_commit_tree file cs;
+  let generate_json file title cs =
+    CheckJson.of_commits  ~replace_commit_tree file title cs;
     Printf.eprintf "File %S generated\n%!" file
   in
 
@@ -126,24 +132,15 @@ let generate_json dirs =
                let (c, _stats) = CheckIO.load file in
                c) commits
       in
-      generate_json (Printf.sprintf "%s.json" switch) switch_cs;
+      generate_json (Printf.sprintf "%s.json" switch)
+                    (Printf.sprintf "Switch %s" switch)
+                    switch_cs;
       match switch_cs with
         [] -> assert false
       | c :: _ -> main_cs := c :: !main_cs
     ) !switches;
 
-  generate_json "opam-builder.json" !main_cs;
-
-  List.iter (fun file ->
-      FileString.write_file file
-                            (List.assoc ("files" // file) CheckFiles.files);
-      Printf.eprintf "File %S generated\n%!" file;
-    ) [
-              "opam-builder.html";
-              "opam-builder.css";
-              "opam-builder.js";
-              "opam-builder-ocamlpro-inria-irill.png";
-            ];
+  generate_json "opam-builder.json" "All Switches" !main_cs;
 
   Gc.major();
   Gc.compact();
@@ -154,25 +151,42 @@ let readdir dir = try Sys.readdir dir with _ -> [||]
 
 let action dirs =
 
-   let rec iter prev_files =
 
-     let report_dirs = ref [] in
-     List.iter (fun dir ->
-                    let files = readdir dir in
-                    Array.iter (fun file ->
-                                    let report_dir = dir // file //
-                                    "builder.reports" in
-                                    if Sys.file_exists report_dir then
-                                    report_dirs := report_dir :: !report_dirs
-                                    ) files
-     ) dirs;
+  if !arg_static then begin
+      List.iter (fun file ->
+          FileString.write_file file
+                                (List.assoc ("files" // file) CheckFiles.files);
+          Printf.eprintf "File %S generated\n%!" file;
+        ) [
+                  "opam-builder.html";
+                  "opam-builder.css";
+                  "opam-builder.js";
+                  "opam-builder-ocamlpro-inria-irill.png";
+                ];
+    end;
 
-     let new_files = List.map readdir !report_dirs in
-     if prev_files <> new_files then
-       generate_json !report_dirs;
+  if !arg_dynamic then begin
+      if !arg_watch then CommandSwitch.save_pid ();
+      let rec iter prev_files =
 
-     if !arg_watch then begin
-       Unix.sleep 5;
-       iter new_files
-     end
-   in iter []
+        let report_dirs = ref [] in
+        List.iter (fun dir ->
+            let files = readdir dir in
+            Array.iter (fun file ->
+                let report_dir = dir // file //
+                                   "builder.reports" in
+                if Sys.file_exists report_dir then
+                  report_dirs := report_dir :: !report_dirs
+              ) files
+          ) dirs;
+
+        let new_files = List.map readdir !report_dirs in
+        if prev_files <> new_files then
+          generate_json !report_dirs;
+
+        if !arg_watch then begin
+            Unix.sleep 5;
+            iter new_files
+          end
+      in iter []
+    end

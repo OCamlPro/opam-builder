@@ -25,8 +25,7 @@ depends: [
      "dose3"
      "jsonm"
      "ocamlfind"
-     "ocp-build" {>= "1.99.17-beta" }
-     "ocplib-file"
+     "ocp-build" {>= "1.99.19-beta" }
 ]
 available: [ocaml-version >= "3.12.1"]
 maintainer: "Fabrice Le Fessant <fabrice.le_fessant@ocamlpro.com>"

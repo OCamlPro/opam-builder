@@ -7,7 +7,7 @@
 #   * ocp-autoconf.ac for autoconf parts              #
 #                                                     #
 #######################################################
-AC_INIT(opam-builder,1.1)
+AC_INIT(opam-builder,2.0)
 CONFIGURE_ARGS=$*
 AC_COPYRIGHT(Copyright 2016)
 OCAML_MINIMAL_VERSION=3.12.1
@@ -125,19 +125,15 @@ AC_CHECK_OCAML_PKG(ocp-build)
 if test "$OCAML_PKG_ocp_build" = "no"; then
    AC_MSG_ERROR([Please install OCaml package 'ocp-build'.])
 fi
-  AX_COMPARE_VERSION( [$OCAML_PKG_ocp_build_VERSION], [lt], [1.99.17-beta],
-     AC_MSG_ERROR([Version 1.99.17-beta of ocp-build is needed]))
-AC_CHECK_OCAML_PKG(ocplib-file)
-if test "$OCAML_PKG_ocplib_file" = "no"; then
-   AC_MSG_ERROR([Please install OCaml package 'ocplib-file'.])
-fi
+  AX_COMPARE_VERSION( [$OCAML_PKG_ocp_build_VERSION], [lt], [1.99.19-beta],
+     AC_MSG_ERROR([Version 1.99.19-beta of ocp-build is needed]))
 AC_CHECK_OCAML_PKG(dose3)
 if test "$OCAML_PKG_dose3" = "no"; then
    AC_MSG_ERROR([Please install OCaml package 'dose3'.])
 fi
-OPAM_REPO=
-OPAM_REPO_OFFICIAL_REMOTE=
-OPAM_REPO_FORK_REMOTE=
+OPAM_REPO=/home/lefessan/GIT/ocp-public/opam-repository
+OPAM_REPO_OFFICIAL_REMOTE=ocaml
+OPAM_REPO_FORK_REMOTE=origin
 DOWNLOAD_URL_PREFIX=http://github.com/OCamlPro/opam-builder/archive/
 
 ###############################################################
@@ -185,7 +181,7 @@ AC_CONFIG_FILES(Makefile.config config.ocpgen config.ocp2gen ocaml-config.h)
 AC_OUTPUT
 
 echo
-echo "Summary:"
+echo "Summary for ${PACKAGE_NAME}.${PACKAGE_VERSION}:"
 echo "prefix=${prefix}"
 echo "exec_prefix=${exec_prefix}"
 echo "bindir=${bindir}"

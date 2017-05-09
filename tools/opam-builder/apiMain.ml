@@ -381,6 +381,8 @@ let file_of_file d file filename =
 let () =
 
   let dir = "builder.files" in
+
+  Printf.printf "Reading files from %s\n%!" dir;
   let files = Sys.readdir dir in
 
   let date =
@@ -482,4 +484,6 @@ let () =
   let oc = open_out "builder.database" in
   output_value oc 1; (* version 1 *)
   output_value oc d;
-  close_out oc
+  close_out oc;
+
+  Printf.printf "Database Generated: builder.database\n%!"

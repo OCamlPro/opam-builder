@@ -236,9 +236,9 @@ let () =
 
   Subcommand.add "switch"
                  CommandSwitch.args
-                 false
+                 true
                  "Watch the local switch in which it is called"
-                 [ "opam-builder watch [arguments]";
+                 [ "opam-builder switch SWITCH [arguments]";
                    "";
                    "  Watch the local opam-builder switch in which it is called.";
                  ]

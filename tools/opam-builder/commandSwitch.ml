@@ -27,11 +27,31 @@ let args =
   @ CommandExport.args
   @ CommandGc.args
 
+let save_pid () =
+  let pid = Unix.getpid () in
+  let oc = open_out "builder.pid" in
+  Printf.fprintf oc "%d\n" pid;
+  close_out oc;
+  at_exit (function () ->
+                    try Sys.remove "builder.pid" with _ -> ()
+          )
+      
 let action args =
-
+  
   CheckTree.check_in_tree ();
   CommandScan.check_env ();
+  
+  let in_switch = CheckTree.read_switch () in
+  begin
+    match args with
+    | [ switch ] ->
+       if switch <> in_switch then begin
+           CheckTree.fatal "specified switch differs from directory content"
+         end
+    | _ -> ()       
+  end;
 
+  save_pid ();
   CommandWatch.watch (fun commit ->
       Printf.eprintf "Watch: re-building...\n%!";
       if !arg_old_export then
