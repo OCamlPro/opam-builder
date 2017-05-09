@@ -135,9 +135,9 @@ AC_CHECK_OCAML_PKG(dose3)
 if test "$OCAML_PKG_dose3" = "no"; then
    AC_MSG_ERROR([Please install OCaml package 'dose3'.])
 fi
-OPAM_REPO=
-OPAM_REPO_OFFICIAL_REMOTE=
-OPAM_REPO_FORK_REMOTE=
+OPAM_REPO=/home/lefessan/GIT/ocp-public/opam-repository
+OPAM_REPO_OFFICIAL_REMOTE=ocaml
+OPAM_REPO_FORK_REMOTE=origin
 DOWNLOAD_URL_PREFIX=http://github.com/OCamlPro/opam-builder/archive/
 
 ###############################################################
@@ -185,7 +185,7 @@ AC_CONFIG_FILES(Makefile.config config.ocpgen config.ocp2gen ocaml-config.h)
 AC_OUTPUT
 
 echo
-echo "Summary:"
+echo "Summary for ${PACKAGE_NAME}.${PACKAGE_VERSION}:"
 echo "prefix=${prefix}"
 echo "exec_prefix=${exec_prefix}"
 echo "bindir=${bindir}"
