@@ -7,7 +7,7 @@
 #   * ocp-autoconf.ac for autoconf parts              #
 #                                                     #
 #######################################################
-AC_INIT(opam-builder,1.1)
+AC_INIT(opam-builder,2.0)
 CONFIGURE_ARGS=$*
 AC_COPYRIGHT(Copyright 2016)
 OCAML_MINIMAL_VERSION=3.12.1
