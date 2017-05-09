@@ -25,7 +25,7 @@ depends: [
      "dose3"
      "jsonm"
      "ocamlfind"
-     "ocp-build" {>= "1.99.17-beta" }
+     "ocp-build" {>= "1.99.19-beta" }
      "ocplib-file"
 ]
 available: [ocaml-version >= "3.12.1"]

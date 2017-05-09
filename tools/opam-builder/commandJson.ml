@@ -166,6 +166,7 @@ let action dirs =
     end;
 
   if !arg_dynamic then begin
+      if !arg_watch then CommandSwitch.save_pid ();
       let rec iter prev_files =
 
         let report_dirs = ref [] in

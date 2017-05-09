@@ -4256,7 +4256,7 @@ fi
                      -e 's/[^0-9]//g'`
 
 
-  ax_compare_version_B=`echo "1.99.17-beta" | sed -e 's/\([0-9]*\)/Z\1Z/g' \
+  ax_compare_version_B=`echo "1.99.19-beta" | sed -e 's/\([0-9]*\)/Z\1Z/g' \
                      -e 's/Z\([0-9]\)Z/Z0\1Z/g' \
                      -e 's/Z\([0-9][0-9]\)Z/Z0\1Z/g' \
                      -e 's/Z\([0-9][0-9][0-9]\)Z/Z0\1Z/g' \
@@ -4269,7 +4269,7 @@ x$ax_compare_version_B" | sed 's/^ *//' | sort -r | sed "s/x${ax_compare_version
 
 
     if test "$ax_compare_version" = "true" ; then
-    as_fn_error $? "Version 1.99.17-beta of ocp-build is needed" "$LINENO" 5
+    as_fn_error $? "Version 1.99.19-beta of ocp-build is needed" "$LINENO" 5
       fi
 
 
