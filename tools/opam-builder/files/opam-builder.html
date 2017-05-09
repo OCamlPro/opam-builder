@@ -8,7 +8,10 @@
 
     <div class="banner">
       <h1 class="banner-title">OPAM BUILDER</h1>
-    <input id="id-search" class="search-query" type="text" placeholder="Search packages"/>
+      <input id="id-search" class="search-query" type="text"
+             placeholder="Search packages"
+             onkeyup='javascript:button_global_search()'
+             />
     <button onclick='javascript:button_clear_search()'>Clear Search</button>
     <button onclick='javascript:button_all_switches()'>All Switches</button>
     <button onclick='javascript:button_swap_view_switches_package()'>Swap View Switches/Package</button>
@@ -40,7 +43,7 @@
       <table class="packages-table" id="id-packages-table"></table>
     </div>
     <div id="id-package" class="package">
-      <h2>Package <div id="id-version_name"></div></h2>
+      <h2>Package <div id="id-version_name"></div>No Package Selected Yet</h2>
       <h3>State: <div id="id-status"></div></h3>
       <h3>Check Date: <pre id="id-check_date"></pre></h3>
       <h3>Switch: <pre id="id-switch_name"></pre></h3>
