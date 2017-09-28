@@ -90,10 +90,17 @@ cd ${ROOTDIR}
 # all instances share a download-cache
 mkdir opam-download-cache
 
-# Now, here is how to create a switch for 3.12.1:
+# Now, here is how to create a switch for 4.02.1:
 
 PATH=${OPAMPATH} ${OPAMBUILDER} create 4.02.1
 cd ${ROOTDIR}/4.02.1
+
+# update the switch index
+cd 2.0
+PATH=${OPAMPATH} ${OPAM} admin index
+cd ..
+
+# watch the 4.02.1 switch
 PATH=${OPAMPATH} nohup ${OPAMBUILDER} switch &
 
 # Now, here is how to create a switch for 4.03.0:
@@ -101,6 +108,9 @@ PATH=${OPAMPATH} nohup ${OPAMBUILDER} switch &
 # You can use `scripts/restart-switch.sh` for that
 PATH=${OPAMPATH} ${OPAMBUILDER} create 4.03.0
 cd ${ROOTDIR}/4.03.0
+cd 2.0
+PATH=${OPAMPATH} ${OPAM} admin index
+cd ..
 PATH=${OPAMPATH} nohup ${OPAMBUILDER} switch &
 
 # The JSON watcher
