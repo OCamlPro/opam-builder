@@ -78,7 +78,7 @@ open StringCompat
       mutable version_revdeps : version list;
 
       (* only available after build *)
-      mutable version_result : bool option;
+      mutable version_result : version_result option;
       mutable version_build : build_file option;
       mutable version_log : string option;
     }
@@ -100,6 +100,11 @@ open StringCompat
        lint_warnings: (int * string) list;
        lint_errors: (int * string) list;
      }
+
+   and version_result =
+     | Success (* the version built correctly *)
+     | Failure (* the version failed to build *)
+     | Depfail (* a dependency failed to build *)
 
   type commit = {
       check_date : string;

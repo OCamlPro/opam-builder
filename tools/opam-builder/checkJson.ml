@@ -45,8 +45,9 @@ let of_commit ~replace_commit_tree c =
         StringMap.iter (fun _ v ->
             let status =
               match v.version_result with
-              | Some true -> "Ok"
-              | Some false -> "Fail"
+              | Some Success -> "Ok"
+              | Some Failure -> "Fail"
+              | Some Depfail -> "DepFail"
               | None ->
                  match v.version_status with
                  | None -> "NotChecked"
@@ -68,8 +69,9 @@ let of_commit ~replace_commit_tree c =
                         "build_result",
                         S (match v.version_result with
                            | None -> "not available"
-                           | Some true -> "Success"
-                           | Some false -> "Failed");
+                           | Some Success -> "Success"
+                           | Some Failure -> "Failed"
+                           | Some Depfail -> "Depfail");
                         "build_log",
                         S (match v.version_log with
                            | None -> "not available"
@@ -138,8 +140,9 @@ let of_commits ~replace_commit_tree filename title cs =
               let _, t = get_version v in
               let state =
                 match v.version_result with
-                | Some true -> "Ok"
-                | Some false -> "Fail"
+                | Some Success -> "Ok"
+                | Some Failure -> "Fail"
+                | Some Depfail -> "Depfail"
                 | None ->
                    match v.version_status with
                    | None -> "NotChecked"

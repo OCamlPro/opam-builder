@@ -92,10 +92,12 @@ let export st c stats =
                   Printf.fprintf oc "begin-build:true\n%s\nbegin-build:false\n"
                     build_content;
 
-                | "FAILURE\n" ->
+                | ("FAILURE\n" | "DEPFAIL\n") as status ->
                   let log_content = FileString.read_file log_file in
                   let build_content = FileString.read_file build_file in
-                  Printf.fprintf oc "status:failure\n";
+                  if status = "FAILURE\n"
+                  then Printf.fprintf oc "status:failure\n"
+                  else Printf.fprintf oc "status:depfail\n";
                   Printf.fprintf oc "begin-build:true\n%s\nbegin-build:false\n"
                     build_content;
                   Printf.fprintf oc "begin-log:true\n%s\nbegin-log:false\n"

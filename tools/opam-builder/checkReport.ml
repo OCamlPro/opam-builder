@@ -64,7 +64,7 @@ let report st c stats =
               try
                 match FileString.read_file result_file with
                 | "SUCCESS\n" -> incr nsuccess_versions
-                | "FAILURE\n" -> incr nfailed_versions
+                | "FAILURE\n" | "DEPFAIL\n" -> incr nfailed_versions
                 | _ -> raise Exit
               with _ ->
                 incr nerror_versions
@@ -129,8 +129,11 @@ let report st c stats =
                 match FileString.read_file result_file with
                 | "SUCCESS\n" ->
                   Printf.fprintf oc "  <td style=\"background-color: green;\"></td>\n";
-                | "FAILURE\n" ->
-                  Printf.fprintf oc "  <td style=\"background-color: orange;\"><a href=\"#%s\">FAILURE</a></td>\n" v.version_name;
+                | ("FAILURE\n" | "DEPFAIL\n") as fail_status ->
+                  let msg =
+                    if fail_status = "FAILURE\n"
+                    then "FAILURE" else "DEPFAIL" in
+                  Printf.fprintf oc "  <td style=\"background-color: orange;\"><a href=\"#%s\">%s</a></td>\n" msg v.version_name;
                 | _ -> raise Exit
               with _ ->
                 Printf.fprintf oc "  <td style=\"background-color: orange;\">???</td>\n";
@@ -170,8 +173,8 @@ let report st c stats =
               let result_file = install_prefix ^ ".result" in
               try
                 match FileString.read_file result_file with
-                | "SUCCESS\n" -> ()
-                | "FAILURE\n" ->
+                | "SUCCESS\n"-> ()
+                | "FAILURE\n" | "DEPFAIL\n" ->
                   version_header p v;
                   Printf.fprintf oc "<pre>%s</pre>"
                     (FileString.read_file build_file);

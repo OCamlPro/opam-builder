@@ -118,7 +118,7 @@ let compute_solution_checksum st v solution_deps =
           try
             match FileString.read_file result_file with
             | "SUCCESS\n" -> ()
-            | "FAILURE\n" ->
+            | "FAILURE\n" | "DEPFAIL\n" ->
                Printf.eprintf
                  "Compilation disabled because dependency %s failed before\n%!"
                  version_name;
@@ -185,7 +185,7 @@ let really_check_install failures st v only_to_clean
        Printf.fprintf build_oc "disabled:skip:%s\n" v.version_name;
        close_out build_oc;
        close_out log_oc;
-       FileString.write_file result_file "FAILURE\n";
+       FileString.write_file result_file "DEPFAIL\n";
        ()
 
 let check_installable_solution

@@ -107,7 +107,7 @@ var table_page = 0;       // position of displayed table
 var table_page_size = initial_page_size;    // min number of displayed entries
 var table_title = "";   // current displayed switch
 var table_search = "";   // global search
-var table_tag = "";      // Ok, Missing, Fail, BadDeps
+var table_tag = "";      // Ok, Missing, Fail, DepFail, BadDeps
 
 var package_json_url = "";
 var package_json = null;
