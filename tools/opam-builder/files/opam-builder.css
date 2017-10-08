@@ -1,5 +1,6 @@
 .Ok { background-color: green; }
-.BadDeps { background-color: orange; }
+.BadDeps { background-color: white; }
+.DepFail { background-color: orange; }
 .Fail { background-color: red; }
 
 .page-body {

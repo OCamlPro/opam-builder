@@ -61,11 +61,15 @@ let build_packages () =
               try
                 match FileString.read_file result_file with
                 | "SUCCESS\n" ->
-                   Some true
+                   Some Success
                 | "FAILURE\n" ->
                    v.version_log <-
                      (try Some (FileString.read_file log_file) with _ -> None);
-                   Some false
+                   Some Failure
+                | "DEPFAIL\n" ->
+                   v.version_log <-
+                     (try Some (FileString.read_file log_file) with _ -> None);
+                   Some Depfail
                 | _ ->
                    let tmp_file = result_file ^ ".tmp" in
                    (try Sys.remove tmp_file with _ -> ());
@@ -104,7 +108,7 @@ after deleting the wrong result files. *)
                         try
                           let vdep = StringMap.find dep c.versions in
                           match vdep.version_result with
-                          | Some true ->
+                          | Some Success ->
                              Printf.eprintf
                                "Inconsistency: %S skipped, but dep %S is ok\n%!"
                                v.version_name vdep.version_name;
