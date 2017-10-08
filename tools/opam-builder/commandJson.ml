@@ -140,6 +140,11 @@ let generate_json dirs =
       | c :: _ -> main_cs := c :: !main_cs
     ) !switches;
 
+  (* switches are iterated in alphabetic order,
+     but main_cs is appended-to so it has to be reversed
+     to show switches in order *)
+  main_cs := List.rev !main_cs;
+
   generate_json "opam-builder.json" "All Switches" !main_cs;
 
   Gc.major();
