@@ -46,9 +46,9 @@ make install
 
 # Download and extract OPAM
 cd ${ROOTDIR}
-git clone git@github.com:ocaml/opam
+git clone https://github.com/ocaml/opam.git
 cd ${ROOTDIR}/opam
-git remote add ${OPAM_DEV} git@github.com:${OPAM_DEV}/opam
+git remote add ${OPAM_DEV} https://github.com/${OPAM_DEV}/opam
 git fetch ${OPAM_DEV}
 git checkout -b ${OPAM_BRANCH} --track ${OPAM_DEV}/${OPAM_BRANCH}
 cd ..
@@ -64,20 +64,20 @@ cp -f src/opam ${OPAM}
 
 # Download and extract opam-repository
 cd ${ROOTDIR}
-git clone git@github.com:ocaml/opam-repository
+git clone https://github.com/ocaml/opam-repository
 cd ${ROOTDIR}/opam-repository
-git remote add ocaml git@github.com:ocaml/opam-repository
+git remote add ocaml https://github.com/ocaml/opam-repository
 git fetch ocaml
 
 # Create a local OPAM switch for opam-builder, with its dependencies
-OPAMROOT=${LOCALROOT} ${OPAM} init -q
+OPAMROOT=${LOCALROOT} ${OPAM} init --comp=4.05.0 -q
 OPAMROOT=${LOCALROOT} ${OPAM} install dose3
 OPAMROOT=${LOCALROOT} ${OPAM} install ocp-build
 OPAMROOT=${LOCALROOT} ${OPAM} install jsonm
 
 # Download and extract opam-builder
 cd ${ROOTDIR}
-git clone git@github.com:OCamlPro/opam-builder
+git clone https://github.com/OCamlPro/opam-builder
 
 # Build opam-builder
 cd ${ROOTDIR}/opam-builder
@@ -90,10 +90,17 @@ cd ${ROOTDIR}
 # all instances share a download-cache
 mkdir opam-download-cache
 
-# Now, here is how to create a switch for 3.12.1:
+# Now, here is how to create a switch for 4.02.1:
 
 PATH=${OPAMPATH} ${OPAMBUILDER} create 4.02.1
 cd ${ROOTDIR}/4.02.1
+
+# update the switch index
+cd 2.0
+PATH=${OPAMPATH} ${OPAM} admin index
+cd ..
+
+# watch the 4.02.1 switch
 PATH=${OPAMPATH} nohup ${OPAMBUILDER} switch &
 
 # Now, here is how to create a switch for 4.03.0:
@@ -101,6 +108,9 @@ PATH=${OPAMPATH} nohup ${OPAMBUILDER} switch &
 # You can use `scripts/restart-switch.sh` for that
 PATH=${OPAMPATH} ${OPAMBUILDER} create 4.03.0
 cd ${ROOTDIR}/4.03.0
+cd 2.0
+PATH=${OPAMPATH} ${OPAM} admin index
+cd ..
 PATH=${OPAMPATH} nohup ${OPAMBUILDER} switch &
 
 # The JSON watcher
