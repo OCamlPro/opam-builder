@@ -727,11 +727,11 @@ function get_version_link(text,
     
     /* we need to create a different url for every
        callback, so we must create a new scope. */
-    a.href = "javascript:swap_to_package('" + 
+    a.href = url_of_package(
         timestamp_date + '-' +
         commit_name + '-' +
         switch_name + '.files/' +
-        version_name + ".json')";
+        version_name + ".json");
     a.appendChild(text);
     return a;
 }
@@ -795,6 +795,15 @@ function swap_to_package(url)
     s.package_json_url = url;
     s.show_table = 1;
     page_update_view( s );
+}
+
+function url_of_package(json_url)
+{
+    var s = object_of_state();
+    s.package_json_url = json_url;
+    s.show_table = 1;
+    var url = update_url_from_state( window.location.pathname, s );
+    return url;
 }
 
 function swap_diff()
